@@ -2,17 +2,21 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation'; // Import useParams
-import { doc, getDoc, collection, query, where, orderBy, Timestamp, addDoc, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useParams } from 'next/navigation';
+import { doc, getDoc, collection, query, where, orderBy, Timestamp, addDoc, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore'; // Added serverTimestamp
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { Collection, Link as LinkType, UserProfile } from '@/types';
 import Image from 'next/image';
 import LinkCard from '@/components/LinkCard';
 import AddLinkForm from '@/components/AddLinkForm';
 import { useAuthStatus } from '@/hooks/useAuthStatus';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Info, Link as LinkIconFeather, ImageOff } from 'lucide-react';
+import { ArrowLeft, Info, Link as LinkIconFeather, ImageOff, UploadCloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -22,7 +26,7 @@ interface EnrichedLink extends LinkType {
 
 export default function CollectionPage() {
   const paramsHook = useParams();
-  const collectionId = paramsHook.id as string; // Get id from useParams
+  const collectionId = paramsHook.id as string;
 
   const { user, loading: authLoading } = useAuthStatus();
   const [collectionData, setCollectionData] = useState<Collection | null>(null);
@@ -30,6 +34,9 @@ export default function CollectionPage() {
   const [ownerProfile, setOwnerProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const { toast } = useToast();
 
   const fetchCollectionAndLinks = useCallback(async () => {
     if (!collectionId) return;
@@ -37,7 +44,6 @@ export default function CollectionPage() {
     setError(null);
 
     try {
-      // Fetch collection details
       const collectionDocRef = doc(db, 'collections', collectionId);
       const collectionDocSnap = await getDoc(collectionDocRef);
 
@@ -51,7 +57,6 @@ export default function CollectionPage() {
       const fetchedCollection = { id: collectionDocSnap.id, ...collectionDocSnap.data() } as Collection;
       setCollectionData(fetchedCollection);
 
-      // Fetch owner profile if owner ID exists
       if (fetchedCollection.owner) {
         const ownerDocRef = doc(db, 'users', fetchedCollection.owner);
         const ownerDocSnap = await getDoc(ownerDocRef);
@@ -60,11 +65,10 @@ export default function CollectionPage() {
         }
       }
 
-      // Fetch links for this collection
       const linksQuery = query(
         collection(db, 'links'),
         where('collectionId', '==', collectionId)
-        // orderBy('createdAt', 'desc') // Re-add this once index is confirmed/created
+        // orderBy('createdAt', 'desc') // Re-add this once index is confirmed/created (index: collectionId ASC, createdAt DESC)
       );
       const linksSnapshot = await getDocs(linksQuery);
       const fetchedLinks = linksSnapshot.docs.map(docSnapshot => ({
@@ -81,12 +85,55 @@ export default function CollectionPage() {
     }
   }, [collectionId]);
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setImageFile(e.target.files[0]);
+    } else {
+      setImageFile(null);
+    }
+  };
+
+  const handleImageUpload = async () => {
+    if (!imageFile || !user || !collectionData) return;
+
+    setUploadingImage(true);
+    try {
+      const storageRef = ref(storage, `collection_images/${collectionId}/${imageFile.name}`);
+      const snapshot = await uploadBytes(storageRef, imageFile);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      const collectionDocRef = doc(db, 'collections', collectionId);
+      const newUpdatedAt = Timestamp.now(); // Client-side approximation for immediate UI
+
+      await updateDoc(collectionDocRef, {
+        image: downloadURL,
+        updatedAt: serverTimestamp(), // Update with server timestamp
+      });
+
+      setCollectionData(prevData => {
+        if (!prevData) return null;
+        return {
+          ...prevData,
+          image: downloadURL,
+          updatedAt: newUpdatedAt, // Update local state with client-side timestamp
+        };
+      });
+      setImageFile(null);
+      toast({ title: 'Image uploaded successfully!' });
+    } catch (err: any) {
+      console.error('Error uploading image:', err);
+      toast({ title: 'Error uploading image', description: err.message, variant: 'destructive' });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   useEffect(() => {
     fetchCollectionAndLinks();
   }, [fetchCollectionAndLinks]);
 
   const handleLinkAdded = (newLink: LinkType) => {
-    fetchCollectionAndLinks(); // Refetch all links and collection data
+    fetchCollectionAndLinks();
   };
 
   if (authLoading || loading) {
@@ -201,6 +248,27 @@ export default function CollectionPage() {
             <CardDescription className="text-lg pt-2">{collectionData.description}</CardDescription>
           )}
         </CardHeader>
+         {isOwner && (
+          <CardContent className="border-t pt-4">
+            <h3 className="text-lg font-semibold mb-2">Collection Image</h3>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="flex-grow w-full sm:w-auto">
+                 <Label htmlFor="collection-image" className="sr-only">Choose image</Label>
+                 <Input
+                  id="collection-image"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                />
+              </div>
+               <Button onClick={handleImageUpload} disabled={!imageFile || uploadingImage}>
+                {uploadingImage ? (
+                   <> <UploadCloud className="mr-2 h-4 w-4 animate-pulse" /> Uploading... </>
+                 ) : (<> <UploadCloud className="mr-2 h-4 w-4" /> Update Image </>)}
+              </Button>
+            </div>
+          </CardContent>
+        )}
       </Card>
       
       {isOwner && (
@@ -238,4 +306,3 @@ export default function CollectionPage() {
     </div>
   );
 }
-

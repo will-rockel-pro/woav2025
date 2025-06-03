@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase'; 
+import { db, auth } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 
+import { useRouter } from 'next/navigation';
 
 const CreateCollectionForm: React.FC = () => {
   const [title, setTitle] = useState('');
@@ -20,6 +21,7 @@ const CreateCollectionForm: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [user, authLoading, authError] = useAuthState(auth);
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -55,7 +57,7 @@ const CreateCollectionForm: React.FC = () => {
         description: `Your new collection "${title}" has been successfully created.`,
       });
       console.log('Collection created successfully with ID: ', docRef.id);
-      // Optionally redirect or provide further user feedback
+            router.push(`/collections/${docRef.id}`); // Redirect to the new collection's page
     } catch (err: any) {
       setError(err.message);
       toast({
