@@ -21,42 +21,50 @@ interface EnrichedCollection extends CollectionType {
 }
 
 async function fetchUserProfile(username: string): Promise<UserProfileType | null> {
+  console.log(`[UserProfilePage fetchUserProfile] Fetching profile for username: "${username}"`);
   const usersRef = collection(db, 'users');
-  const q = query(usersRef, where('username', '==', String(username)), limit(1));
+  const q = query(usersRef, where('username', '==', String(username).toLowerCase()), limit(1)); // Ensure lowercase for query
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) {
-    console.warn(`[UserProfilePage] fetchUserProfile: No user found for username "${String(username)}"`);
+    console.warn(`[UserProfilePage fetchUserProfile] No user found for username "${String(username)}"`);
     return null;
   }
-  return querySnapshot.docs[0].data() as UserProfileType;
+  const userProfileData = querySnapshot.docs[0].data() as UserProfileType;
+  console.log(`[UserProfilePage fetchUserProfile] Found profile for "${username}": UUID ${userProfileData.uuid}`);
+  return userProfileData;
 }
 
 async function fetchUserProfileByUuid(uuid: string): Promise<UserProfileType | null> {
+    console.log(`[UserProfilePage fetchUserProfileByUuid] Fetching profile for UUID: "${uuid}"`);
     const userDocRef = doc(db, 'users', uuid);
     const userDocSnap = await getDoc(userDocRef);
     if (userDocSnap.exists()) {
-        return userDocSnap.data() as UserProfileType;
+        const userProfileData = userDocSnap.data() as UserProfileType;
+        console.log(`[UserProfilePage fetchUserProfileByUuid] Found profile for UUID "${uuid}": Username ${userProfileData.username}`);
+        return userProfileData;
     }
-    console.warn(`[UserProfilePage] fetchUserProfileByUuid: No user found for UUID "${uuid}"`);
+    console.warn(`[UserProfilePage fetchUserProfileByUuid] No user found for UUID "${uuid}"`);
     return null;
 }
 
 async function fetchUserCollections(
   userId: string,
-  isOwnProfileView: boolean
+  isOwnProfileView: boolean,
+  profileOwnerForCollections: UserProfileType | null
 ): Promise<EnrichedCollection[]> {
+  console.log(`[UserProfilePage fetchUserCollections] Fetching collections for user ID: "${userId}", isOwnProfileView: ${isOwnProfileView}`);
   if (!userId) {
-    console.warn("[UserProfilePage] fetchUserCollections: userId is undefined, cannot fetch collections.");
+    console.warn("[UserProfilePage fetchUserCollections] userId is undefined, cannot fetch collections.");
     return [];
   }
   const collectionsRef = collection(db, 'collections');
   let q;
 
-  const profileOwnerForCollections = await fetchUserProfileByUuid(userId);
-
   if (isOwnProfileView) {
+    // Fetch all collections for the owner
     q = query(collectionsRef, where('owner', '==', userId), orderBy('createdAt', 'desc'));
   } else {
+    // Fetch only published collections for other users
     q = query(
       collectionsRef,
       where('owner', '==', userId),
@@ -66,15 +74,16 @@ async function fetchUserCollections(
   }
 
   const querySnapshot = await getDocs(q);
+  console.log(`[UserProfilePage fetchUserCollections] Found ${querySnapshot.docs.length} collections for user ID: "${userId}" (isOwnProfileView: ${isOwnProfileView})`);
 
   const collections = querySnapshot.docs.map(docSnapshot => {
     const colData = docSnapshot.data() as Omit<CollectionType, 'id'>;
     return {
       id: docSnapshot.id,
       ...colData,
-      createdAt: colData.createdAt as Timestamp,
+      createdAt: colData.createdAt as Timestamp, // Ensure Timestamps are correctly typed
       updatedAt: colData.updatedAt as Timestamp,
-      ownerDetails: profileOwnerForCollections || undefined
+      ownerDetails: profileOwnerForCollections || undefined // Use the pre-fetched profile
     } as EnrichedCollection;
   });
   return collections;
@@ -82,17 +91,18 @@ async function fetchUserCollections(
 
 
 export default async function UserProfilePage({ params }: ProfilePageProps) {
+  console.log('[UserProfilePage DEBUG UserProfilePage] Server component execution START.');
   const cookieStore = cookies(); // Call cookies() at the top to ensure dynamic rendering and get store instance
-  const { username } = params; // Destructure username from params
+  const { username } = params;
 
-  console.log(`[UserProfilePage DEBUG] Rendering profile for username: "${username}"`);
+  console.log(`[UserProfilePage DEBUG UserProfilePage] Rendering profile for username from params: "${username}"`);
 
   // Fetch current user and profile user sequentially
   const currentUser = await getCurrentUser(cookieStore);
   const profileUser = await fetchUserProfile(username);
 
-  console.log(`[UserProfilePage DEBUG] currentUser from getCurrentUser:`, currentUser ? { uid: currentUser.uid, email: currentUser.email } : null);
-  console.log(`[UserProfilePage DEBUG] profileUser from fetchUserProfile("${username}"):`, profileUser ? { uuid: profileUser.uuid, username: profileUser.username } : null);
+  console.log(`[UserProfilePage DEBUG UserProfilePage] currentUser from getCurrentUser:`, currentUser ? { uid: currentUser.uid, email: currentUser.email } : null);
+  console.log(`[UserProfilePage DEBUG UserProfilePage] profileUser from fetchUserProfile("${username}"):`, profileUser ? { uuid: profileUser.uuid, username: profileUser.username } : null);
 
   if (!profileUser) {
     return (
@@ -106,14 +116,18 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
     );
   }
 
+  // Crucial check for isOwnProfile
   const isOwnProfile = !!currentUser && !!profileUser && currentUser.uid === profileUser.uuid;
 
-  console.log(`[UserProfilePage DEBUG] Values for isOwnProfile check:`);
+  console.log(`[UserProfilePage DEBUG UserProfilePage] Values for isOwnProfile check:`);
   console.log(`  currentUser?.uid: ${currentUser?.uid}`);
   console.log(`  profileUser.uuid: ${profileUser.uuid}`);
   console.log(`  isOwnProfile evaluates to: ${isOwnProfile}`);
 
-  const collections = await fetchUserCollections(profileUser.uuid, isOwnProfile);
+  // Pass the fetched profileUser to fetchUserCollections to avoid re-fetching
+  const collections = await fetchUserCollections(profileUser.uuid, isOwnProfile, profileUser);
+  console.log(`[UserProfilePage DEBUG UserProfilePage] Fetched ${collections.length} collections.`);
+
 
   return (
     <div className="space-y-10">
@@ -152,6 +166,7 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
         {collections.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {collections.map((col) => (
+              // Pass profileUser as owner if ownerDetails isn't on the collection (it should be from fetchUserCollections)
               <CollectionCard key={col.id} collection={col} owner={col.ownerDetails || profileUser} />
             ))}
           </div>
