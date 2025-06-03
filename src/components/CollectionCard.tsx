@@ -1,9 +1,11 @@
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { Collection, UserProfile } from '@/types';
-import { Eye, UserCircle, Layers } from 'lucide-react';
+import { Eye, UserCircle, EyeOff } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
 
 interface CollectionCardProps {
   collection: Collection;
@@ -26,6 +28,15 @@ export default function CollectionCard({ collection, owner }: CollectionCardProp
         </Link>
       </CardHeader>
       <CardContent className="p-4 flex-grow">
+        {collection.published ? (
+          <Badge variant="default" className="mb-2 inline-flex items-center">
+            <Eye className="mr-1.5 h-3.5 w-3.5" /> Public
+          </Badge>
+        ) : (
+          <Badge variant="secondary" className="mb-2 inline-flex items-center">
+            <EyeOff className="mr-1.5 h-3.5 w-3.5" /> Private
+          </Badge>
+        )}
         <CardTitle className="text-xl mb-1 font-headline">
           <Link href={`/collections/${collection.id}`} className="hover:text-primary transition-colors">
             {collection.title}
