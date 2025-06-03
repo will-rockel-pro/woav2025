@@ -12,10 +12,11 @@ import LinkCard from '@/components/LinkCard';
 import AddLinkForm from '@/components/AddLinkForm';
 import { useAuthStatus } from '@/hooks/useAuthStatus';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Info, Link as LinkIconFeather, ImageOff, UploadCloud } from 'lucide-react';
+import { ArrowLeft, Info, Link as LinkIconFeather, ImageOff, UploadCloud, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import NextLink from 'next/link'; // Renamed to avoid conflict with LinkType
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -95,79 +96,63 @@ export default function CollectionPage() {
   };
 
   const handleImageUpload = async () => {
-    console.log("[DEBUG] Attempting image upload. Current User (from useAuthStatus):", user);
-    console.log("[DEBUG] Current User UID (user?.uid):", user?.uid);
-    console.log("[DEBUG] Target Collection ID from params (collectionIdFromParams):", collectionIdFromParams);
-    console.log("[DEBUG] Image file selected (imageFile?.name):", imageFile?.name);
-    console.log("[DEBUG] Collection Data for metadata (collectionData):", collectionData);
-
-
-    if (!user?.uid) {
-      console.error("[DEBUG] CRITICAL: User UID is missing or user object is null at point of upload attempt.");
-      toast({ title: 'Error', description: 'User session issue. Cannot upload. Please re-authenticate.', variant: 'destructive'});
+    if (!user?.uid || !collectionIdFromParams || !imageFile || !collectionData?.owner) {
+      toast({ title: 'Error', description: 'Cannot upload image. Missing required data or user session.', variant: 'destructive'});
       return;
     }
-    if (!collectionIdFromParams) {
-      console.error("[DEBUG] CRITICAL: Collection ID from URL params is missing at point of upload attempt.");
-      toast({ title: 'Error', description: 'Collection ID context is missing. Cannot upload.', variant: 'destructive'});
-      return;
-    }
-    if (!imageFile) {
-      console.error("[DEBUG] CRITICAL: Image file is missing at point of upload attempt.");
-      toast({ title: 'Error', description: 'No image file selected. Cannot upload.', variant: 'destructive'});
-      return;
-    }
-    if (!collectionData || !collectionData.owner) {
-      console.error("[DEBUG] CRITICAL: Collection data or collection owner UID is missing for metadata.");
-      toast({ title: 'Error', description: 'Collection owner information is missing. Cannot set upload metadata.', variant: 'destructive'});
-      return;
-    }
-
 
     const storagePath = `collection_images/${collectionIdFromParams}/${imageFile.name}`;
     const collectionDocRefForUpdate = doc(db, 'collections', collectionIdFromParams);
-    const fileMetadata = {
-      customMetadata: {
-        'owner_uid': collectionData.owner // Client sends the owner UID
-      }
-    };
-
-    console.log("[DEBUG] Constructed Storage Path for upload:", storagePath);
-    console.log("[DEBUG] Constructed Firestore Document Path for update:", collectionDocRefForUpdate.path);
-    console.log("[DEBUG] Uploading with metadata:", fileMetadata);
+    const fileMetadata = { customMetadata: { 'owner_uid': collectionData.owner } };
 
     setUploadingImage(true);
     try {
       const storageRef = ref(storage, storagePath);
-      // Pass metadata with uploadBytes
       const snapshot = await uploadBytes(storageRef, imageFile, fileMetadata);
       const downloadURL = await getDownloadURL(snapshot.ref);
-
-      console.log("[DEBUG] Image uploaded to Storage. Download URL:", downloadURL);
-      console.log("[DEBUG] Attempting to update Firestore document:", collectionDocRefForUpdate.path, "with image URL and new timestamp.");
 
       await updateDoc(collectionDocRefForUpdate, {
         image: downloadURL,
         updatedAt: serverTimestamp(),
       });
 
-      console.log("[DEBUG] Firestore document updated successfully.");
-
       setCollectionData(prevData => {
-        const baseData = prevData || { id: collectionIdFromParams, title: '', owner: user.uid, published: false, collaborators: [], createdAt: Timestamp.now() };
+        const baseData = prevData || { id: collectionIdFromParams, title: '', owner: user.uid, published: false, collaborators: [], createdAt: Timestamp.now(), updatedAt: Timestamp.now() };
         return { ...baseData, image: downloadURL, updatedAt: Timestamp.now() };
       });
 
       setImageFile(null);
       toast({ title: 'Image uploaded successfully!' });
-    } catch (err: any)
-     {
-      console.error('[DEBUG] Error during image upload or Firestore update:', err);
-      console.error('[DEBUG] Error code:', err.code);
-      console.error('[DEBUG] Error message:', err.message);
+    } catch (err: any) {
+      console.error('Error during image upload or Firestore update:', err);
       toast({ title: 'Error uploading image', description: `Code: ${err.code || 'N/A'} | Message: ${err.message}`, variant: 'destructive' });
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  const handlePublishToggle = async (isPublished: boolean) => {
+    if (!collectionData || !user || user.uid !== collectionData.owner) {
+      toast({ title: 'Error', description: 'You do not have permission to change this setting.', variant: 'destructive' });
+      return;
+    }
+
+    const collectionDocRef = doc(db, 'collections', collectionData.id);
+    try {
+      await updateDoc(collectionDocRef, {
+        published: isPublished,
+        updatedAt: serverTimestamp(),
+      });
+      setCollectionData(prev => prev ? { ...prev, published: isPublished, updatedAt: Timestamp.now() } : null);
+      toast({
+        title: 'Visibility Updated',
+        description: `Collection is now ${isPublished ? 'public' : 'private'}.`,
+      });
+    } catch (err: any) {
+      console.error('Error updating collection visibility:', err);
+      toast({ title: 'Error', description: 'Failed to update collection visibility.', variant: 'destructive' });
+      // Revert local state if Firestore update fails
+      setCollectionData(prev => prev ? { ...prev, published: !isPublished } : null);
     }
   };
 
@@ -295,23 +280,49 @@ export default function CollectionPage() {
           )}
         </CardHeader>
          {isOwner && (
-          <CardContent className="border-t pt-4">
-            <h3 className="text-lg font-semibold mb-2">Collection Image</h3>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div className="flex-grow w-full sm:w-auto">
-                 <Label htmlFor="collection-image" className="sr-only">Choose image</Label>
-                 <Input
-                  id="collection-image"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                />
+          <CardContent className="border-t pt-6 space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Collection Image</h3>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="flex-grow w-full sm:w-auto">
+                  <Label htmlFor="collection-image" className="sr-only">Choose image</Label>
+                  <Input
+                    id="collection-image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                  />
+                </div>
+                <Button onClick={handleImageUpload} disabled={!imageFile || uploadingImage}>
+                  {uploadingImage ? (
+                    <> <UploadCloud className="mr-2 h-4 w-4 animate-pulse" /> Uploading... </>
+                  ) : (<> <UploadCloud className="mr-2 h-4 w-4" /> Update Image </>)}
+                </Button>
               </div>
-               <Button onClick={handleImageUpload} disabled={!imageFile || uploadingImage}>
-                {uploadingImage ? (
-                   <> <UploadCloud className="mr-2 h-4 w-4 animate-pulse" /> Uploading... </>
-                 ) : (<> <UploadCloud className="mr-2 h-4 w-4" /> Update Image </>)}
-              </Button>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Visibility</h3>
+               <div className="flex items-center space-x-3">
+                <Switch
+                  id="publish-collection"
+                  checked={collectionData.published}
+                  onCheckedChange={handlePublishToggle}
+                  aria-label={collectionData.published ? 'Make collection private' : 'Make collection public'}
+                />
+                <Label htmlFor="publish-collection" className="flex items-center cursor-pointer">
+                  {collectionData.published ? (
+                    <><Eye className="mr-2 h-4 w-4" /> Public (Visible to everyone)</>
+                  ) : (
+                    <><EyeOff className="mr-2 h-4 w-4" /> Private (Visible only to you)</>
+                  )}
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1.5">
+                {collectionData.published 
+                  ? "This collection is currently public and can be seen by anyone."
+                  : "This collection is currently private. Only you can see it."}
+              </p>
             </div>
           </CardContent>
         )}
