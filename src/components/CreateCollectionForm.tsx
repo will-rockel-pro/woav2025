@@ -2,8 +2,9 @@
 "use client";
 
 import { useState } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
+import { collection, addDoc, serverTimestamp, updateDoc, doc, Timestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, auth, storage } from '@/lib/firebase'; // Added storage
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,22 +12,30 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-
 import { useRouter } from 'next/navigation';
+import { UploadCloud } from 'lucide-react';
 
 const CreateCollectionForm: React.FC = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [user, authLoading, authError] = useAuthState(auth);
   const { toast } = useToast();
   const router = useRouter();
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setImageFile(e.target.files[0]);
+    } else {
+      setImageFile(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
 
     if (!user) {
       setError('You must be signed in to create a collection.');
@@ -35,37 +44,82 @@ const CreateCollectionForm: React.FC = () => {
         description: "You must be signed in to create a collection.",
         variant: "destructive",
       });
-      setLoading(false);
       return;
     }
 
+    setLoading(true);
+    let collectionId = '';
+
     try {
-      const docRef = await addDoc(collection(db, 'collections'), {
+      // Step 1: Create the collection document in Firestore
+      const collectionData: {
+        title: string;
+        description: string;
+        owner: string;
+        published: boolean;
+        collaborators: string[];
+        createdAt: Timestamp;
+        updatedAt: Timestamp;
+        image: string; // Initialize image as empty
+      } = {
         title,
         description,
-        owner: user.uid, // Changed from userId to owner
-        published: false, // Default to not published
-        collaborators: [], // Default to empty array
-        createdAt: serverTimestamp(), // Use server timestamp
-        updatedAt: serverTimestamp(), // Use server timestamp
-        image: '', // Default empty image, can be updated later
+        owner: user.uid,
+        published: false,
+        collaborators: [],
+        createdAt: serverTimestamp() as Timestamp,
+        updatedAt: serverTimestamp() as Timestamp,
+        image: '', // Initialize with empty image URL
+      };
+      
+      const docRef = await addDoc(collection(db, 'collections'), collectionData);
+      collectionId = docRef.id;
+      console.log('Collection created with ID: ', collectionId);
+
+      // Step 2: If an image file is selected, upload it and update the collection
+      if (imageFile) {
+        toast({
+          title: "Collection Created",
+          description: `"${title}" created. Now uploading image...`,
+        });
+        const storagePath = `collection_images/${collectionId}/${imageFile.name}`;
+        const imageStorageRef = ref(storage, storagePath);
+        
+        // Upload image
+        const snapshot = await uploadBytes(imageStorageRef, imageFile);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        console.log('Image uploaded, URL: ', downloadURL);
+
+        // Step 3: Update the collection document with the image URL
+        await updateDoc(doc(db, 'collections', collectionId), {
+          image: downloadURL,
+          updatedAt: serverTimestamp(),
+        });
+        console.log('Collection updated with image URL.');
+      }
+
+      toast({
+        title: "Collection Created Successfully!",
+        description: `Your new collection "${title}" has been created ${imageFile ? 'with an image' : ''}.`,
       });
+      
+      // Reset form (optional, as we are redirecting)
       setTitle('');
       setDescription('');
-      toast({
-        title: "Collection Created!",
-        description: `Your new collection "${title}" has been successfully created.`,
-      });
-      console.log('Collection created successfully with ID: ', docRef.id);
-            router.push(`/collections/${docRef.id}`); // Redirect to the new collection's page
+      setImageFile(null);
+      
+      router.push(`/collections/${collectionId}`); // Redirect to the new collection's page
+
     } catch (err: any) {
       setError(err.message);
       toast({
-        title: "Error Creating Collection",
+        title: "Error during collection creation",
         description: err.message || "An unexpected error occurred.",
         variant: "destructive",
       });
-      console.error('Error creating collection:', err);
+      console.error('Error during collection creation process:', err);
+      // If collection was created but image upload failed, user will be on create page
+      // with an error. They can navigate to the partially created collection if needed.
     } finally {
       setLoading(false);
     }
@@ -99,7 +153,7 @@ const CreateCollectionForm: React.FC = () => {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="title">Title*</Label>
             <Input
               type="text"
               id="title"
@@ -107,6 +161,7 @@ const CreateCollectionForm: React.FC = () => {
               onChange={(e) => setTitle(e.target.value)}
               required
               placeholder="e.g., My Favorite Recipes, Travel Ideas"
+              disabled={loading}
             />
           </div>
           <div className="space-y-2">
@@ -117,14 +172,36 @@ const CreateCollectionForm: React.FC = () => {
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
               placeholder="A brief description of what this collection is about."
+              disabled={loading}
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="collection-image">Collection Image (Optional)</Label>
+            <Input
+              type="file"
+              id="collection-image"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+              disabled={loading}
+            />
+            {imageFile && (
+              <p className="text-sm text-muted-foreground">Selected: {imageFile.name}</p>
+            )}
           </div>
           <Button
             type="submit"
-            disabled={loading || !title.trim()}
+            disabled={loading || !title.trim() || authLoading}
             className="w-full"
           >
-            {loading ? 'Creating...' : 'Create Collection'}
+            {loading ? (
+              <>
+                <UploadCloud className="mr-2 h-4 w-4 animate-pulse" />
+                Creating Collection...
+              </>
+            ) : (
+              'Create Collection'
+            )}
           </Button>
           {error && <p className="mt-2 text-center text-sm text-destructive">{error}</p>}
         </form>
