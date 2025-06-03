@@ -27,15 +27,17 @@ export default function SignIn() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    console.log('[EmailSignIn] Attempting email sign-in for:', email); 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
       if (user) {
+        console.log('[EmailSignIn] Client-side Firebase sign-in successful. User UID:', user.uid);
         const idToken = await user.getIdToken(true);
         console.log('[EmailSignIn] ID token obtained (first 10 chars):', idToken.substring(0,10) + '...');
 
-        console.log('[EmailSignIn] Calling /api/auth/session-login...');
+        console.log('[EmailSignIn] Calling /api/auth/session-login with ID token...');
         const response = await fetch('/api/auth/session-login', {
           method: 'POST',
           headers: {
@@ -43,34 +45,30 @@ export default function SignIn() {
           },
           body: JSON.stringify({ idToken }),
         });
+        console.log('[EmailSignIn] /api/auth/session-login call completed. Response status:', response.status);
 
         if (!response.ok) {
           const errorData = await response.json();
           console.error('[EmailSignIn] API call to /api/auth/session-login FAILED. Status:', response.status, 'Error:', errorData.error);
-          // Present a user-friendly error, but still log details
           toast({ title: "Session Creation Failed", description: errorData.error || "Could not establish a server session.", variant: "destructive" });
-          // Decide if you want to throw an error here or allow proceeding without server session
-          // For now, we'll log and show toast, but let the user proceed to client-side auth state.
-          // This might mean server-side features reliant on the cookie won't work immediately.
         } else {
           const responseData = await response.json();
           console.log('[EmailSignIn] API call to /api/auth/session-login SUCCEEDED. Status:', response.status, 'Response Data:', responseData);
           toast({ title: "Signed In!", description: "Welcome back. Server session established." });
         }
         
-        // Regardless of session cookie success, client-side auth is complete.
-        // router.refresh() is important to re-fetch server components with new cookie state
+        console.log('[EmailSignIn] Pushing to /discover and refreshing router...');
         router.push("/discover");
         router.refresh();
       } else {
-        // This case should ideally not be reached if signInWithEmailAndPassword succeeds
+        console.error('[EmailSignIn] User object not found after successful Firebase sign-in.');
         throw new Error("User object not found after successful sign-in.");
       }
 
     } catch (error: any) {
+      console.error("[EmailSignIn] Error during email sign-in process:", error.message, error.code ? `(Code: ${error.code})` : '', error.stack);
       setError(error.message);
       toast({ title: "Sign In Failed", description: error.message, variant: "destructive" });
-      console.error("Error signing in with email and password:", error);
     } finally {
       setLoading(false);
     }

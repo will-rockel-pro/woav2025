@@ -16,9 +16,10 @@ export async function POST(request: Request) {
 
     // Basic check if adminAuth is available
     if (!adminAuth) {
-        console.error('[API /api/auth/session-login] Firebase Admin SDK (adminAuth) is not initialized!');
-        return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
+        console.error('[API /api/auth/session-login] Firebase Admin SDK (adminAuth) is not initialized! This is a critical server configuration issue. The `firebaseAdmin.ts` file might have failed to initialize it, possibly due to missing or incorrect service account key JSON.');
+        return NextResponse.json({ error: 'Server configuration error. Admin SDK not available.' }, { status: 500 });
     }
+    console.log('[API /api/auth/session-login] Firebase Admin SDK (adminAuth) appears to be available.');
 
     await createSessionCookie(idToken);
     console.log('[API /api/auth/session-login] Session cookie creation process completed by createSessionCookie.');
