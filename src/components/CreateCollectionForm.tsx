@@ -85,7 +85,9 @@ const CreateCollectionForm: React.FC = () => {
         const storagePath = `collection_images/${collectionId}/${imageFile.name}`;
         const imageStorageRef = ref(storage, storagePath);
         
-        const snapshot = await uploadBytes(imageStorageRef, imageFile);
+        // Add customMetadata for security rules
+        const fileMetadata = { customMetadata: { 'owner_uid': user.uid } };
+        const snapshot = await uploadBytes(imageStorageRef, imageFile, fileMetadata);
         const downloadURL = await getDownloadURL(snapshot.ref);
         console.log('Image uploaded, URL: ', downloadURL);
 
