@@ -26,7 +26,7 @@ interface EnrichedLink extends LinkType {
 
 export default function CollectionPage() {
   const paramsHook = useParams();
-  const collectionIdFromParams = paramsHook.id as string; // Use this directly for operations
+  const collectionIdFromParams = paramsHook.id as string; 
 
   const { user, loading: authLoading } = useAuthStatus();
   const [collectionData, setCollectionData] = useState<Collection | null>(null);
@@ -68,7 +68,8 @@ export default function CollectionPage() {
       const linksQuery = query(
         collection(db, 'links'),
         where('collectionId', '==', collectionIdFromParams)
-        // orderBy('createdAt', 'desc') // Re-add this once index is confirmed/created (index: collectionId ASC, createdAt DESC)
+        // Temporarily removed orderBy to avoid index issues until explicitly requested
+        // orderBy('createdAt', 'desc') 
       );
       const linksSnapshot = await getDocs(linksQuery);
       const fetchedLinks = linksSnapshot.docs.map(docSnapshot => ({
@@ -83,7 +84,7 @@ export default function CollectionPage() {
     } finally {
       setLoading(false);
     }
-  }, [collectionIdFromParams]); // Dependency on collectionIdFromParams
+  }, [collectionIdFromParams]); 
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -105,7 +106,7 @@ export default function CollectionPage() {
         toast({ title: 'Error', description: 'Collection ID is missing.', variant: 'destructive'});
         return;
     }
-
+    
     const storagePath = `collection_images/${collectionIdFromParams}/${imageFile.name}`;
 
     console.log("Attempting image upload with the following details:");
@@ -127,31 +128,23 @@ export default function CollectionPage() {
         updatedAt: serverTimestamp(),
       });
 
-      // Update local state more robustly
       setCollectionData(prevData => {
-        // If previous data exists and matches the current collectionId, update it
         if (prevData && prevData.id === collectionIdFromParams) {
           return {
             ...prevData,
             image: downloadURL,
-            updatedAt: Timestamp.now(), // Client-side approximation for immediate UI update
+            updatedAt: Timestamp.now(), 
           };
         }
-        // If no previous data, or it's for a different collection,
-        // it's harder to update locally without re-fetching.
-        // For now, we'll set a minimal state or encourage a re-fetch.
-        // Ideally, fetchCollectionAndLinks would be called or this component would show a loading state for collectionData.
-        console.warn("Collection data updated, but previous state was null or mismatched. Re-fetching might be needed for full consistency.");
-        // To ensure the image updates visually, we can construct a partial object:
+        // Fallback if prevData is null or mismatched
         return {
             id: collectionIdFromParams,
-            title: prevData?.title || 'Unknown Title', // Attempt to preserve if possible
+            title: prevData?.title || 'Loading title...',
             description: prevData?.description,
-            owner: prevData?.owner || user.uid, // Attempt to preserve
+            owner: prevData?.owner || user.uid,
             published: prevData?.published || false,
             collaborators: prevData?.collaborators || [],
             createdAt: prevData?.createdAt || Timestamp.now(),
-            // Critical fields for current view:
             image: downloadURL,
             updatedAt: Timestamp.now(),
         };
@@ -167,6 +160,10 @@ export default function CollectionPage() {
     }
   };
 
+  const handleLinkAdded = (newLink: EnrichedLink) => {
+    setLinks(prevLinks => [newLink, ...prevLinks]); // Add new link to the beginning of the list
+  };
+
   useEffect(() => {
     if (collectionIdFromParams) {
         fetchCollectionAndLinks();
@@ -174,7 +171,7 @@ export default function CollectionPage() {
   }, [collectionIdFromParams, fetchCollectionAndLinks]);
 
 
-  if (authLoading || (loading && !collectionData)) { // Show loading if auth is loading OR (data loading AND no data yet)
+  if (authLoading || (loading && !collectionData)) { 
     return (
       <div className="space-y-8">
         <Skeleton className="h-9 w-48 mb-6" />
@@ -236,8 +233,6 @@ export default function CollectionPage() {
   }
 
   if (!collectionData) {
-    // This case implies loading is false, no error, but still no collectionData.
-    // This might happen if collectionIdFromParams was initially null/undefined or fetch failed silently.
     return (
       <div className="text-center py-10">
         <Info className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -311,7 +306,7 @@ export default function CollectionPage() {
         )}
       </Card>
       
-      {isOwner && collectionData.id && ( // Ensure collectionData.id is available for AddLinkForm
+      {isOwner && collectionData.id && collectionData.owner &&( 
         <Card>
           <CardHeader>
             <CardTitle>Add New Link</CardTitle>
@@ -319,7 +314,7 @@ export default function CollectionPage() {
           <CardContent>
             <AddLinkForm
               collectionId={collectionData.id}
-              collectionOwnerId={collectionData.owner} // Assuming owner is always present if collectionData is
+              collectionOwnerId={collectionData.owner} 
               onLinkAdded={handleLinkAdded}
             />
           </CardContent>
