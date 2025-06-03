@@ -1,15 +1,16 @@
 
 import Image from 'next/image';
-import NextLink from 'next/link'; // Renamed to avoid conflict
+import NextLink from 'next/link'; 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { Collection, UserProfile } from '@/types';
 import { Eye, UserCircle, EyeOff } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar components
 
 interface CollectionCardProps {
   collection: Collection;
-  owner?: UserProfile | null; // Optional owner details
+  owner?: UserProfile | null; 
 }
 
 export default function CollectionCard({ collection, owner }: CollectionCardProps) {
@@ -23,7 +24,7 @@ export default function CollectionCard({ collection, owner }: CollectionCardProp
             width={600}
             height={400}
             className="w-full h-48 object-cover"
-            data-ai-hint="abstract geometric"
+            data-ai-hint="collection abstract"
           />
         </NextLink>
       </CardHeader>
@@ -43,7 +44,12 @@ export default function CollectionCard({ collection, owner }: CollectionCardProp
         </CardDescription>
         {owner && (
           <div className="text-xs text-muted-foreground flex items-center mt-2">
-            <UserCircle className="w-4 h-4 mr-1.5 flex-shrink-0" />
+            <Avatar className="w-5 h-5 mr-1.5 flex-shrink-0">
+              <AvatarImage src={owner.profile_picture ?? undefined} alt={owner.profile_name} data-ai-hint="owner avatar small" />
+              <AvatarFallback className="text-xs">
+                {owner.profile_name ? owner.profile_name.charAt(0).toUpperCase() : <UserCircle className="w-3 h-3" />}
+              </AvatarFallback>
+            </Avatar>
             <NextLink href={`/profile/${owner.username}`} className="hover:text-primary transition-colors line-clamp-1">
               {owner.profile_name} (@{owner.username})
             </NextLink>

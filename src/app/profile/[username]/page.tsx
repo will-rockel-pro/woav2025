@@ -1,12 +1,15 @@
 
 import { collection, query, where, getDocs, limit, orderBy, Timestamp } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase'; // auth might be needed for own profile check
+import { db } from '@/lib/firebase'; 
 import type { UserProfile as UserProfileType, Collection as CollectionType } from '@/types';
 import CollectionCard from '@/components/CollectionCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { UserCircle, Library, Info } from 'lucide-react';
-import { getCurrentUser } from '@/lib/auth/server'; // Helper to get current user on server
+import { getCurrentUser } from '@/lib/auth/server'; 
+import ProfileImageUploader from '@/components/ProfileImageUploader'; // Import the new component
+import { doc, getDoc } from 'firebase/firestore';
+
 
 interface ProfilePageProps {
   params: {
@@ -36,10 +39,8 @@ async function fetchUserCollections(
   let q;
 
   if (isOwnProfile) {
-    // Fetch all collections (public and private) for the owner
     q = query(collectionsRef, where('owner', '==', userId), orderBy('createdAt', 'desc'));
   } else {
-    // Fetch only public collections for other users
     q = query(
       collectionsRef,
       where('owner', '==', userId),
@@ -49,18 +50,22 @@ async function fetchUserCollections(
   }
 
   const querySnapshot = await getDocs(q);
-  const collections = querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as EnrichedCollection[];
   
-  // For CollectionCard, the ownerDetails will be the profile user themselves.
-  // This could be redundant if CollectionCard can infer, but explicit is fine.
-  const profileUser = await fetchUserProfileByUuid(userId);
-  return collections.map(col => ({ ...col, ownerDetails: profileUser || undefined }));
+  const profileUser = await fetchUserProfileByUuid(userId); // Fetch the profile user once
+
+  const collections = querySnapshot.docs.map(docSnapshot => {
+    const colData = docSnapshot.data() as Omit<CollectionType, 'id'>; // Ensure Timestamps are handled if they are objects
+    return {
+      id: docSnapshot.id,
+      ...colData,
+      createdAt: colData.createdAt as Timestamp, // Cast if necessary, depending on Firestore SDK version/setup
+      updatedAt: colData.updatedAt as Timestamp, // Cast if necessary
+      ownerDetails: profileUser || undefined // Use the pre-fetched profileUser
+    } as EnrichedCollection;
+  });
+  return collections;
 }
 
-// Helper to fetch user profile by UUID, useful for enriching collection data
 async function fetchUserProfileByUuid(uuid: string): Promise<UserProfileType | null> {
     const userDocRef = doc(db, 'users', uuid);
     const userDocSnap = await getDoc(userDocRef);
@@ -69,14 +74,11 @@ async function fetchUserProfileByUuid(uuid: string): Promise<UserProfileType | n
     }
     return null;
 }
-// Need to import doc and getDoc for fetchUserProfileByUuid
-import { doc, getDoc } from 'firebase/firestore';
-
 
 export default async function UserProfilePage({ params }: ProfilePageProps) {
   const { username } = params;
   const profileUser = await fetchUserProfile(username);
-  const currentUser = await getCurrentUser(); // Get the currently logged-in user (if any)
+  const currentUser = await getCurrentUser(); 
 
   if (!profileUser) {
     return (
@@ -98,15 +100,23 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
       <Card className="shadow-lg">
         <CardHeader className="items-center text-center p-6 sm:p-8">
           <Avatar className="h-24 w-24 sm:h-32 sm:w-32 mb-4 border-4 border-background shadow-md">
-            <AvatarImage src={profileUser.profile_picture} alt={profileUser.profile_name} data-ai-hint="user avatar large" />
+            <AvatarImage src={profileUser.profile_picture ?? undefined} alt={profileUser.profile_name} data-ai-hint="user profile large" />
             <AvatarFallback className="text-4xl">
               {profileUser.profile_name ? profileUser.profile_name.charAt(0).toUpperCase() : <UserCircle />}
             </AvatarFallback>
           </Avatar>
           <CardTitle className="text-3xl sm:text-4xl font-headline">{profileUser.profile_name}</CardTitle>
           <CardDescription className="text-lg text-muted-foreground">@{profileUser.username}</CardDescription>
-          {/* Could add bio or other details here in the future */}
         </CardHeader>
+        {isOwnProfile && (
+          <CardContent className="p-6 border-t">
+            <ProfileImageUploader 
+              userId={profileUser.uuid} 
+              currentImageUrl={profileUser.profile_picture}
+              userName={profileUser.profile_name}
+            />
+          </CardContent>
+        )}
       </Card>
 
       <section>
@@ -117,8 +127,7 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
         {collections.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {collections.map((col) => (
-              // Pass the profileUser as ownerDetails since these are their collections
-              <CollectionCard key={col.id} collection={col} owner={profileUser} />
+              <CollectionCard key={col.id} collection={col} owner={col.ownerDetails || profileUser} />
             ))}
           </div>
         ) : (
