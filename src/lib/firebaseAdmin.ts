@@ -2,6 +2,7 @@
 import admin from 'firebase-admin';
 
 const serviceAccountKeyJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_JSON;
+const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
 if (!serviceAccountKeyJson) {
   throw new Error(
@@ -12,37 +13,35 @@ if (!serviceAccountKeyJson) {
   );
 }
 
-// Function to ensure Firebase Admin is initialized
-export async function ensureAdminInitialized() {
-  if (!admin.apps.length) {
-    console.log('[firebaseAdmin] Initializing Firebase Admin SDK...');
-    try {
-      const serviceAccount = JSON.parse(serviceAccountKeyJson);
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      });
-      console.log('[firebaseAdmin] Firebase Admin SDK initialized successfully.');
-    } catch (e: any) {
-      console.error('[firebaseAdmin] Firebase Admin SDK service account JSON parsing error or initialization error:', e.message);
-      // Optionally re-throw or handle as critical error
-      throw new Error(
-        'Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY_JSON or initialize Admin SDK. Ensure it is valid JSON. ' + e.message
-      );
-    }
-  } else {
-    // console.log('[firebaseAdmin] Firebase Admin SDK already initialized.');
-  }
+if (!projectId) {
+  throw new Error(
+    'The NEXT_PUBLIC_FIREBASE_PROJECT_ID environment variable is not set. ' +
+    'This is required for Firebase Admin SDK initialization.'
+  );
 }
 
+if (!admin.apps.length) {
+  try {
+    const serviceAccount = JSON.parse(serviceAccountKeyJson);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      projectId: projectId,
+    });
+    console.log('[firebaseAdmin] Firebase Admin SDK initialized successfully.');
+  } catch (e: any) {
+    console.error('[firebaseAdmin] Firebase Admin SDK initialization error:', e.message, e.stack);
+    // Throw a more specific error to halt execution if init fails
+    throw new Error(
+      'Failed to initialize Firebase Admin SDK. Ensure FIREBASE_SERVICE_ACCOUNT_KEY_JSON is valid and NEXT_PUBLIC_FIREBASE_PROJECT_ID is set. Original error: ' + e.message
+    );
+  }
+} else {
+  // console.log('[firebaseAdmin] Firebase Admin SDK already initialized.');
+}
 
-// Call it once to ensure it attempts initialization when this module is loaded
-ensureAdminInitialized().catch(err => {
-  // This catch is to prevent unhandled promise rejection if ensureAdminInitialized throws
-  // The actual error throwing is handled inside ensureAdminInitialized
-  console.error("[firebaseAdmin] Initial call to ensureAdminInitialized failed:", err.message);
-});
+// Export the initialized services
+const adminAuth = admin.auth();
+const adminDb = admin.firestore();
+const adminStorage = admin.storage();
 
-export const adminAuth = admin.auth();
-export const adminDb = admin.firestore();
-export const adminStorage = admin.storage();
+export { adminAuth, adminDb, adminStorage };
