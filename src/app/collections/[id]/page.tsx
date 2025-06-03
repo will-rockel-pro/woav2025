@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import Link from 'next/link';
+import NextLink from 'next/link'; // Renamed to avoid conflict with LinkType
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface EnrichedLink extends LinkType {
@@ -96,14 +96,14 @@ export default function CollectionPage() {
 
   const handleImageUpload = async () => {
     if (!imageFile || !user) {
-      console.error("Image upload preconditions not met: Missing imageFile or user.", { hasImageFile: !!imageFile, hasUser: !!user });
+      console.error("Image upload preconditions not met: Missing imageFile or user.", { imageFile, user });
       toast({ title: 'Error', description: 'Cannot upload image. Missing file or user session.', variant: 'destructive'});
       return;
     }
 
     if (!collectionIdFromParams) {
-        console.error("Collection ID from params is missing, cannot upload image.");
-        toast({ title: 'Error', description: 'Collection ID is missing.', variant: 'destructive'});
+        console.error("Collection ID from URL params is missing, cannot upload image.");
+        toast({ title: 'Error', description: 'Collection ID (from URL) is missing.', variant: 'destructive'});
         return;
     }
     
@@ -111,7 +111,7 @@ export default function CollectionPage() {
 
     console.log("Attempting image upload with the following details:");
     console.log("Current User UID:", user.uid);
-    console.log("Target Collection ID (from URL params):", collectionIdFromParams);
+    console.log("Target Collection ID (for storage path & Firestore doc):", collectionIdFromParams);
     console.log("Storage Path:", storagePath);
 
 
@@ -121,34 +121,18 @@ export default function CollectionPage() {
       const snapshot = await uploadBytes(storageRef, imageFile);
       const downloadURL = await getDownloadURL(snapshot.ref);
 
-      const collectionDocRef = doc(db, 'collections', collectionIdFromParams);
+      const collectionDocRef = doc(db, 'collections', collectionIdFromParams); 
       
       await updateDoc(collectionDocRef, {
         image: downloadURL,
-        updatedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(), 
       });
 
       setCollectionData(prevData => {
-        if (prevData && prevData.id === collectionIdFromParams) {
-          return {
-            ...prevData,
-            image: downloadURL,
-            updatedAt: Timestamp.now(), 
-          };
-        }
-        // Fallback if prevData is null or mismatched
-        return {
-            id: collectionIdFromParams,
-            title: prevData?.title || 'Loading title...',
-            description: prevData?.description,
-            owner: prevData?.owner || user.uid,
-            published: prevData?.published || false,
-            collaborators: prevData?.collaborators || [],
-            createdAt: prevData?.createdAt || Timestamp.now(),
-            image: downloadURL,
-            updatedAt: Timestamp.now(),
-        };
+        const baseData = prevData || { id: collectionIdFromParams, title: '', owner: user.uid, published: false, collaborators: [], createdAt: Timestamp.now() };
+        return { ...baseData, image: downloadURL, updatedAt: Timestamp.now() };
       });
+
       setImageFile(null);
       toast({ title: 'Image uploaded successfully!' });
     } catch (err: any)
@@ -226,7 +210,7 @@ export default function CollectionPage() {
         <Info className="mx-auto h-12 w-12 text-destructive mb-4" />
         <h2 className="text-xl font-semibold text-destructive">{error}</h2>
         <Button asChild variant="link" className="mt-4">
-          <Link href="/discover"><ArrowLeft className="mr-2 h-4 w-4" /> Go back to My Collections</Link>
+          <NextLink href="/discover"><ArrowLeft className="mr-2 h-4 w-4" /> Go back to My Collections</NextLink>
         </Button>
       </div>
     );
@@ -238,7 +222,7 @@ export default function CollectionPage() {
         <Info className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
         <h2 className="text-xl font-semibold">Collection not found or still loading.</h2>
          <Button asChild variant="link" className="mt-4">
-          <Link href="/discover"><ArrowLeft className="mr-2 h-4 w-4" /> Go back to My Collections</Link>
+          <NextLink href="/discover"><ArrowLeft className="mr-2 h-4 w-4" /> Go back to My Collections</NextLink>
         </Button>
       </div>
     );
@@ -250,10 +234,10 @@ export default function CollectionPage() {
     <div className="space-y-8">
       <div>
         <Button asChild variant="outline" size="sm" className="mb-6">
-          <Link href="/discover">
+          <NextLink href="/discover">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to My Collections
-          </Link>
+          </NextLink>
         </Button>
       </div>
 
@@ -306,7 +290,7 @@ export default function CollectionPage() {
         )}
       </Card>
       
-      {isOwner && collectionData.id && collectionData.owner &&( 
+      {isOwner && collectionData.id && collectionData.owner && ( 
         <Card>
           <CardHeader>
             <CardTitle>Add New Link</CardTitle>
@@ -341,4 +325,4 @@ export default function CollectionPage() {
     </div>
   );
 }
-
+    
