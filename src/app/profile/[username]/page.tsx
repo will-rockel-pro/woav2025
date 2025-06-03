@@ -1,6 +1,6 @@
 
-import { collection, query, where, getDocs, limit, orderBy, Timestamp, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs, limit, orderBy, Timestamp, doc } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebaseAdmin'; // Correctly import adminDb
 import type { UserProfile as UserProfileType, Collection as CollectionType } from '@/types';
 import CollectionCard from '@/components/CollectionCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -9,7 +9,7 @@ import { UserCircle, Library, Info, Edit3 } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth/server';
 import ProfileImageUploader from '@/components/ProfileImageUploader';
 import ProfileBioEditor from '@/components/ProfileBioEditor';
-import { cookies } from 'next/headers'; 
+import { cookies } from 'next/headers';
 import { Separator } from '@/components/ui/separator';
 
 interface ProfilePageProps {
@@ -23,17 +23,22 @@ interface EnrichedCollection extends CollectionType {
 }
 
 async function fetchUserProfile(username: string): Promise<UserProfileType | null> {
-  console.log(`[UserProfilePage fetchUserProfile] Fetching profile for username: "${username}"`);
-  const usersRef = collection(db, 'users');
-  const q = query(usersRef, where('username', '==', String(username).toLowerCase()), limit(1));
-  const querySnapshot = await getDocs(q);
-  if (querySnapshot.empty) {
-    console.warn(`[UserProfilePage fetchUserProfile] No user found for username "${String(username)}"`);
-    return null;
+  console.log(`[UserProfilePage fetchUserProfile] Fetching profile for username: "${username}" using adminDb`);
+  try {
+    const usersRef = collection(adminDb, 'users'); // Use adminDb
+    const q = query(usersRef, where('username', '==', String(username).toLowerCase()), limit(1));
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) {
+      console.warn(`[UserProfilePage fetchUserProfile] No user found for username "${String(username)}"`);
+      return null;
+    }
+    const userProfileData = querySnapshot.docs[0].data() as UserProfileType;
+    console.log(`[UserProfilePage fetchUserProfile] Found profile for "${username}": UUID ${userProfileData.uuid}`);
+    return userProfileData;
+  } catch (error: any) {
+    console.error(`[UserProfilePage fetchUserProfile] Error using adminDb for ${username}:`, error.message, error.code, error.stack);
+    throw error;
   }
-  const userProfileData = querySnapshot.docs[0].data() as UserProfileType;
-  console.log(`[UserProfilePage fetchUserProfile] Found profile for "${username}": UUID ${userProfileData.uuid}`);
-  return userProfileData;
 }
 
 async function fetchUserCollections(
@@ -41,52 +46,61 @@ async function fetchUserCollections(
   isOwnProfileView: boolean,
   profileOwnerForCollections: UserProfileType | null
 ): Promise<EnrichedCollection[]> {
-  console.log(`[UserProfilePage fetchUserCollections] Fetching collections for user ID: "${userId}", isOwnProfileView: ${isOwnProfileView}`);
+  console.log(`[UserProfilePage fetchUserCollections] Fetching collections for user ID: "${userId}", isOwnProfileView: ${isOwnProfileView} using adminDb`);
   if (!userId) {
     console.warn("[UserProfilePage fetchUserCollections] userId is undefined, cannot fetch collections.");
     return [];
   }
-  const collectionsRef = collection(db, 'collections');
-  let q;
+  try {
+    const collectionsRef = collection(adminDb, 'collections'); // Use adminDb
+    let q;
 
-  if (isOwnProfileView) {
-    q = query(collectionsRef, where('owner', '==', userId), orderBy('createdAt', 'desc'));
-  } else {
-    q = query(
-      collectionsRef,
-      where('owner', '==', userId),
-      where('published', '==', true),
-      orderBy('createdAt', 'desc')
-    );
+    if (isOwnProfileView) {
+      q = query(collectionsRef, where('owner', '==', userId), orderBy('createdAt', 'desc'));
+    } else {
+      q = query(
+        collectionsRef,
+        where('owner', '==', userId),
+        where('published', '==', true),
+        orderBy('createdAt', 'desc')
+      );
+    }
+
+    const querySnapshot = await getDocs(q);
+    console.log(`[UserProfilePage fetchUserCollections] Found ${querySnapshot.docs.length} collections for user ID: "${userId}" (isOwnProfileView: ${isOwnProfileView})`);
+
+    const collections = querySnapshot.docs.map(docSnapshot => {
+      const colData = docSnapshot.data() as Omit<CollectionType, 'id'>;
+      // Ensure Timestamps are correctly handled if they are not already Timestamps
+      const createdAt = colData.createdAt instanceof Timestamp ? colData.createdAt : Timestamp.fromDate(new Date()); // Fallback or ensure correct type
+      const updatedAt = colData.updatedAt instanceof Timestamp ? colData.updatedAt : Timestamp.fromDate(new Date()); // Fallback or ensure correct type
+
+      return {
+        id: docSnapshot.id,
+        ...colData,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+        ownerDetails: profileOwnerForCollections || undefined
+      } as EnrichedCollection;
+    });
+    return collections;
+  } catch (error: any) {
+    console.error(`[UserProfilePage fetchUserCollections] Error using adminDb for user ${userId}:`, error.message, error.code, error.stack);
+    throw error;
   }
-
-  const querySnapshot = await getDocs(q);
-  console.log(`[UserProfilePage fetchUserCollections] Found ${querySnapshot.docs.length} collections for user ID: "${userId}" (isOwnProfileView: ${isOwnProfileView})`);
-
-  const collections = querySnapshot.docs.map(docSnapshot => {
-    const colData = docSnapshot.data() as Omit<CollectionType, 'id'>;
-    return {
-      id: docSnapshot.id,
-      ...colData,
-      createdAt: colData.createdAt as Timestamp,
-      updatedAt: colData.updatedAt as Timestamp,
-      ownerDetails: profileOwnerForCollections || undefined
-    } as EnrichedCollection;
-  });
-  return collections;
 }
 
 
 export default async function UserProfilePage({ params }: ProfilePageProps) {
   console.log('[UserProfilePage DEBUG UserProfilePage] Server component execution START.');
-  const cookieStore = cookies(); 
+  const cookieStore = cookies();
   const { username } = params;
 
   console.log(`[UserProfilePage DEBUG UserProfilePage] Rendering profile for username from params: "${username}"`);
 
   const currentUser = await getCurrentUser(cookieStore);
   console.log(`[UserProfilePage DEBUG UserProfilePage] currentUser from getCurrentUser:`, currentUser ? { uid: currentUser.uid, email: currentUser.email } : null);
-  
+
   const profileUser = await fetchUserProfile(username);
   console.log(`[UserProfilePage DEBUG UserProfilePage] profileUser from fetchUserProfile("${username}"):`, profileUser ? { uuid: profileUser.uuid, username: profileUser.username, bio: profileUser.bio } : null);
 
@@ -122,7 +136,7 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
             <AvatarImage
               src={profileUser.profile_picture ?? undefined}
               alt={profileUser.profile_name}
-              priority 
+              priority
               data-ai-hint="user profile large"
             />
             <AvatarFallback className="text-4xl">
@@ -143,7 +157,7 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
               userName={profileUser.profile_name}
             />
             <Separator />
-            <ProfileBioEditor 
+            <ProfileBioEditor
               userId={profileUser.uuid}
               currentBio={profileUser.bio || ""}
             />
