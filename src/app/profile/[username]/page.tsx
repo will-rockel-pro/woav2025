@@ -1,11 +1,12 @@
 
 import { collection, query, where, getDocs, limit, orderBy, Timestamp, doc } from 'firebase/firestore';
-import { adminDb } from '@/lib/firebaseAdmin'; // Correctly import adminDb
+import admin from 'firebase-admin'; // Import admin directly
+import { adminDb as importedAdminDb, ensureAdminInitialized } from '@/lib/firebaseAdmin'; // Keep for potential use or ensure init
 import type { UserProfile as UserProfileType, Collection as CollectionType } from '@/types';
 import CollectionCard from '@/components/CollectionCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { UserCircle, Library, Info, Edit3 } from 'lucide-react';
+import { UserCircle, Library, Info } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth/server';
 import ProfileImageUploader from '@/components/ProfileImageUploader';
 import ProfileBioEditor from '@/components/ProfileBioEditor';
@@ -23,9 +24,11 @@ interface EnrichedCollection extends CollectionType {
 }
 
 async function fetchUserProfile(username: string): Promise<UserProfileType | null> {
-  console.log(`[UserProfilePage fetchUserProfile] Fetching profile for username: "${username}" using adminDb`);
+  await ensureAdminInitialized(); // Ensure admin is initialized
+  const firestore = admin.firestore(); // Get a fresh instance
+  console.log(`[UserProfilePage fetchUserProfile] Fetching profile for username: "${username}"`);
   try {
-    const usersRef = collection(adminDb, 'users'); // Use adminDb
+    const usersRef = firestore.collection('users');
     const q = query(usersRef, where('username', '==', String(username).toLowerCase()), limit(1));
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) {
@@ -36,7 +39,7 @@ async function fetchUserProfile(username: string): Promise<UserProfileType | nul
     console.log(`[UserProfilePage fetchUserProfile] Found profile for "${username}": UUID ${userProfileData.uuid}`);
     return userProfileData;
   } catch (error: any) {
-    console.error(`[UserProfilePage fetchUserProfile] Error using adminDb for ${username}:`, error.message, error.code, error.stack);
+    console.error(`[UserProfilePage fetchUserProfile] Error using admin.firestore() for ${username}:`, error.message, error.code, error.stack);
     throw error;
   }
 }
@@ -46,13 +49,15 @@ async function fetchUserCollections(
   isOwnProfileView: boolean,
   profileOwnerForCollections: UserProfileType | null
 ): Promise<EnrichedCollection[]> {
-  console.log(`[UserProfilePage fetchUserCollections] Fetching collections for user ID: "${userId}", isOwnProfileView: ${isOwnProfileView} using adminDb`);
+  await ensureAdminInitialized(); // Ensure admin is initialized
+  const firestore = admin.firestore(); // Get a fresh instance
+  console.log(`[UserProfilePage fetchUserCollections] Fetching collections for user ID: "${userId}", isOwnProfileView: ${isOwnProfileView}`);
   if (!userId) {
     console.warn("[UserProfilePage fetchUserCollections] userId is undefined, cannot fetch collections.");
     return [];
   }
   try {
-    const collectionsRef = collection(adminDb, 'collections'); // Use adminDb
+    const collectionsRef = firestore.collection('collections');
     let q;
 
     if (isOwnProfileView) {
@@ -71,9 +76,9 @@ async function fetchUserCollections(
 
     const collections = querySnapshot.docs.map(docSnapshot => {
       const colData = docSnapshot.data() as Omit<CollectionType, 'id'>;
-      // Ensure Timestamps are correctly handled if they are not already Timestamps
-      const createdAt = colData.createdAt instanceof Timestamp ? colData.createdAt : Timestamp.fromDate(new Date()); // Fallback or ensure correct type
-      const updatedAt = colData.updatedAt instanceof Timestamp ? colData.updatedAt : Timestamp.fromDate(new Date()); // Fallback or ensure correct type
+      const createdAt = colData.createdAt instanceof Timestamp ? colData.createdAt : Timestamp.fromDate(new Date((colData.createdAt as any)._seconds * 1000));
+      const updatedAt = colData.updatedAt instanceof Timestamp ? colData.updatedAt : Timestamp.fromDate(new Date((colData.updatedAt as any)._seconds * 1000));
+
 
       return {
         id: docSnapshot.id,
@@ -85,7 +90,7 @@ async function fetchUserCollections(
     });
     return collections;
   } catch (error: any) {
-    console.error(`[UserProfilePage fetchUserCollections] Error using adminDb for user ${userId}:`, error.message, error.code, error.stack);
+    console.error(`[UserProfilePage fetchUserCollections] Error using admin.firestore() for user ${userId}:`, error.message, error.code, error.stack);
     throw error;
   }
 }
@@ -93,7 +98,7 @@ async function fetchUserCollections(
 
 export default async function UserProfilePage({ params }: ProfilePageProps) {
   console.log('[UserProfilePage DEBUG UserProfilePage] Server component execution START.');
-  const cookieStore = cookies();
+  const cookieStore = cookies(); // Ensure cookies() is called to mark the page as dynamic
   const { username } = params;
 
   console.log(`[UserProfilePage DEBUG UserProfilePage] Rendering profile for username from params: "${username}"`);
@@ -168,7 +173,7 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
       <section>
         <h2 className="text-3xl font-bold mb-6 flex items-center font-headline">
           <Library className="mr-3 h-8 w-8 text-primary" />
-          {isOwnProfile ? "My Collections" : `Collections by ${profileUser.profile_name}`} ({collections.length})
+          {isOwn_profile ? "My Collections" : `Collections by ${profileUser.profile_name}`} ({collections.length})
         </h2>
         {collections.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
