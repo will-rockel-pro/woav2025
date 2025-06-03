@@ -46,37 +46,34 @@ export async function clearSessionCookie(): Promise<void> {
 
 // Modified function to accept cookieStore
 export async function getCurrentUser(cookieStoreInstance?: ReadonlyRequestCookies): Promise<DecodedIdToken | null> {
-  // If no cookieStoreInstance is passed, try to get it from next/headers
-  // This provides flexibility but calls cookies() only if necessary from here.
-  const storeToUse = cookieStoreInstance || cookies();
-  console.log('[AuthServer] Attempting to get current user from session cookie via store...');
-
+  console.log('[AuthServer DEBUG] getCurrentUser called.');
+  const storeToUse = cookieStoreInstance || cookies(); // Use passed store or default
   let sessionCookieValue: string | undefined;
+
   try {
     const sessionCookie = storeToUse.get(SESSION_COOKIE_NAME);
     sessionCookieValue = sessionCookie?.value;
+    if (sessionCookieValue) {
+      console.log('[AuthServer DEBUG] Session cookie FOUND in store. Value (first 10 chars):', sessionCookieValue.substring(0, 10) + '...');
+    } else {
+      console.log('[AuthServer DEBUG] Session cookie NOT FOUND in store.');
+      return null;
+    }
   } catch (e: any) {
-    console.error('[AuthServer] Error accessing cookie from provided store:', e.message);
+    console.error('[AuthServer DEBUG] Error accessing cookie from store:', e.message);
     return null;
   }
-
-  if (!sessionCookieValue) {
-    console.log('[AuthServer] No session cookie value found in store.');
-    return null;
-  }
-
-  console.log('[AuthServer] Session cookie found in store. Value (first 10 chars):', sessionCookieValue.substring(0, 10) + '...');
 
   try {
-    console.log('[AuthServer] Verifying session cookie from store...');
+    console.log('[AuthServer DEBUG] Verifying session cookie from store...');
     const decodedIdToken = await adminAuth.verifySessionCookie(sessionCookieValue, true /** checkRevoked */);
-    console.log('[AuthServer] Session cookie verified successfully from store. UID:', decodedIdToken.uid);
+    console.log('[AuthServer DEBUG] Session cookie VERIFIED successfully from store. UID:', decodedIdToken.uid);
     return decodedIdToken;
   } catch (error: any) {
-    console.error('[AuthServer] Error verifying session cookie from store:', error.message, error.code ? `(Code: ${error.code})` : '');
+    console.error('[AuthServer DEBUG] Error VERIFYING session cookie from store:', error.message, error.code ? `(Code: ${error.code})` : '');
     // Do not clear cookie here if store was passed, let the caller handle it or clear it via the standard cookies()
     if (!cookieStoreInstance) {
-        console.log('[AuthServer] Clearing invalid/expired session cookie due to verification error (when using internal cookies() call).');
+        console.log('[AuthServer DEBUG] Clearing invalid/expired session cookie (when using internal cookies() call).');
         cookies().delete(SESSION_COOKIE_NAME);
     }
     return null;

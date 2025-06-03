@@ -22,7 +22,6 @@ interface EnrichedCollection extends CollectionType {
 
 async function fetchUserProfile(username: string): Promise<UserProfileType | null> {
   const usersRef = collection(db, 'users');
-  // Ensure username is a string before querying.
   const q = query(usersRef, where('username', '==', String(username)), limit(1));
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) {
@@ -84,17 +83,16 @@ async function fetchUserCollections(
 
 export default async function UserProfilePage({ params }: ProfilePageProps) {
   const cookieStore = cookies(); // Call cookies() at the top to ensure dynamic rendering and get store instance
-  const { username } = params;
+  const { username } = params; // Destructure username from params
 
-  console.log(`[UserProfilePage] Rendering profile for username: "${username}"`);
+  console.log(`[UserProfilePage DEBUG] Rendering profile for username: "${username}"`);
 
-  // Pass the cookieStore instance to getCurrentUser
+  // Fetch current user and profile user sequentially
   const currentUser = await getCurrentUser(cookieStore);
-  console.log(`[UserProfilePage DEBUG] currentUser from getCurrentUser(cookieStore): UID = ${currentUser?.uid}`);
-
   const profileUser = await fetchUserProfile(username);
-  console.log(`[UserProfilePage DEBUG] profileUser from fetchUserProfile("${username}"): UID = ${profileUser?.uuid}`);
 
+  console.log(`[UserProfilePage DEBUG] currentUser from getCurrentUser:`, currentUser ? { uid: currentUser.uid, email: currentUser.email } : null);
+  console.log(`[UserProfilePage DEBUG] profileUser from fetchUserProfile("${username}"):`, profileUser ? { uuid: profileUser.uuid, username: profileUser.username } : null);
 
   if (!profileUser) {
     return (
@@ -110,9 +108,9 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
 
   const isOwnProfile = !!currentUser && !!profileUser && currentUser.uid === profileUser.uuid;
 
-  console.log(`[UserProfilePage DEBUG] For profile @${username}:`);
-  console.log(`  Current User UID (from cookieStore): ${currentUser?.uid}`);
-  console.log(`  Profile User UID (from DB): ${profileUser?.uuid}`);
+  console.log(`[UserProfilePage DEBUG] Values for isOwnProfile check:`);
+  console.log(`  currentUser?.uid: ${currentUser?.uid}`);
+  console.log(`  profileUser.uuid: ${profileUser.uuid}`);
   console.log(`  isOwnProfile evaluates to: ${isOwnProfile}`);
 
   const collections = await fetchUserCollections(profileUser.uuid, isOwnProfile);
