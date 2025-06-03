@@ -2,59 +2,60 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Bookmark, Search, Users, Library } from 'lucide-react';
-import { collection, query, where, getDocs, doc, getDoc, orderBy, limit, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import type { Collection as CollectionType, UserProfile } from '@/types';
+// import { collection, query, where, getDocs, doc, getDoc, orderBy, limit, Timestamp } from 'firebase/firestore';
+// import { db } from '@/lib/firebase';
+// import type { Collection as CollectionType, UserProfile } from '@/types';
 import CollectionCard from '@/components/CollectionCard';
 
-interface EnrichedCollection extends CollectionType {
-  ownerDetails?: UserProfile;
-}
+// interface EnrichedCollection extends CollectionType {
+//   ownerDetails?: UserProfile;
+// }
 
-async function getPublicCollections(): Promise<EnrichedCollection[]> {
-  try {
-    const collectionsQuery = query(
-      collection(db, 'collections'),
-      where('published', '==', true),
-      orderBy('createdAt', 'desc'),
-      limit(20)
-    );
-    const querySnapshot = await getDocs(collectionsQuery);
+// async function getPublicCollections(): Promise<EnrichedCollection[]> {
+//   try {
+//     const collectionsQuery = query(
+//       collection(db, 'collections'),
+//       where('published', '==', true),
+//       orderBy('createdAt', 'desc'),
+//       limit(20)
+//     );
+//     const querySnapshot = await getDocs(collectionsQuery);
 
-    const collections: EnrichedCollection[] = [];
-    for (const docSnapshot of querySnapshot.docs) {
-      const colData = docSnapshot.data() as Omit<CollectionType, 'id'>;
-      let ownerDetails: UserProfile | undefined = undefined;
+//     const collections: EnrichedCollection[] = [];
+//     for (const docSnapshot of querySnapshot.docs) {
+//       const colData = docSnapshot.data() as Omit<CollectionType, 'id'>;
+//       let ownerDetails: UserProfile | undefined = undefined;
 
-      if (colData.owner) {
-         const userProfileDocRef = doc(db, 'users', colData.owner);
-         const userProfileDocSnap = await getDoc(userProfileDocRef);
-         if (userProfileDocSnap.exists()) {
-             ownerDetails = userProfileDocSnap.data() as UserProfile;
-         } else {
-            console.warn(`[HomePage] Owner profile for UID ${colData.owner} not found for collection ${docSnapshot.id}.`);
-         }
-      } else {
-        console.warn(`[HomePage] Collection ${docSnapshot.id} is missing an owner UID.`);
-      }
+//       if (colData.owner) {
+//          const userProfileDocRef = doc(db, 'users', colData.owner);
+//          const userProfileDocSnap = await getDoc(userProfileDocRef);
+//          if (userProfileDocSnap.exists()) {
+//              ownerDetails = userProfileDocSnap.data() as UserProfile;
+//          } else {
+//             console.warn(`[HomePage] Owner profile for UID ${colData.owner} not found for collection ${docSnapshot.id}.`);
+//          }
+//       } else {
+//         console.warn(`[HomePage] Collection ${docSnapshot.id} is missing an owner UID.`);
+//       }
 
-      collections.push({
-        ...colData,
-        id: docSnapshot.id,
-        createdAt: colData.createdAt as Timestamp,
-        updatedAt: colData.updatedAt as Timestamp,
-        ownerDetails
-      });
-    }
-    return collections;
-  } catch (error) {
-    console.error("Error fetching public collections:", error);
-    return [];
-  }
-}
+//       collections.push({
+//         ...colData,
+//         id: docSnapshot.id,
+//         createdAt: colData.createdAt as Timestamp,
+//         updatedAt: colData.updatedAt as Timestamp,
+//         ownerDetails
+//       });
+//     }
+//     return collections;
+//   } catch (error) {
+//     console.error("Error fetching public collections:", error);
+//     return [];
+//   }
+// }
 
 export default async function HomePage() {
-  const publicCollections = await getPublicCollections();
+  // const publicCollections = await getPublicCollections();
+  const publicCollections: any[] = []; // Temporarily use an empty array
 
   return (
     <>
@@ -103,7 +104,7 @@ export default async function HomePage() {
             <Library className="w-16 h-16 text-primary mx-auto mb-4" />
             <h2 className="text-4xl font-bold font-headline">Explore Public Collections</h2>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto mt-2">
-              Discover what others are curating from around the web.
+              Discover what others are curating from around the web. (Data fetching temporarily disabled for debugging)
             </p>
         </div>
         {publicCollections.length > 0 ? (
@@ -113,7 +114,7 @@ export default async function HomePage() {
             ))}
           </div>
         ) : (
-          <p className="text-center text-muted-foreground py-10">No public collections available at the moment. Check back soon!</p>
+          <p className="text-center text-muted-foreground py-10">Public collections temporarily unavailable while debugging. Check back soon!</p>
         )}
       </section>
     </>
