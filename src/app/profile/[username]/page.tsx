@@ -1,15 +1,15 @@
 
-import { collection, query, where, getDocs, limit, orderBy, Timestamp } from 'firebase/firestore';
-import { adminDb } from '@/lib/firebaseAdmin'; // Use the directly exported adminDb
+// import { collection, query, where, getDocs, limit, orderBy, Timestamp } from 'firebase/firestore';
+// import { adminDb } from '@/lib/firebaseAdmin'; // Temporarily remove adminDb usage
 import type { UserProfile as UserProfileType, Collection as CollectionType } from '@/types';
-import CollectionCard from '@/components/CollectionCard';
+// import CollectionCard from '@/components/CollectionCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { UserCircle, Library, Info } from 'lucide-react';
-import { getCurrentUser } from '@/lib/auth/server';
-import ProfileImageUploader from '@/components/ProfileImageUploader';
-import ProfileBioEditor from '@/components/ProfileBioEditor';
-import { cookies } from 'next/headers';
+// import { getCurrentUser } from '@/lib/auth/server';
+// import ProfileImageUploader from '@/components/ProfileImageUploader';
+// import ProfileBioEditor from '@/components/ProfileBioEditor';
+// import { cookies } from 'next/headers';
 import { Separator } from '@/components/ui/separator';
 
 
@@ -19,119 +19,68 @@ interface ProfilePageProps {
   };
 }
 
-interface EnrichedCollection extends CollectionType {
-  ownerDetails?: UserProfileType;
-}
+// interface EnrichedCollection extends CollectionType {
+//   ownerDetails?: UserProfileType;
+// }
 
-async function fetchUserProfile(username: string): Promise<UserProfileType | null> {
-  console.log(`[UserProfilePage fetchUserProfile] Fetching profile for username: "${username}"`);
-  try {
-    // adminDb is now imported and should be pre-initialized
-    const usersRef = collection(adminDb, 'users');
-    const q = query(usersRef, where('username', '==', String(username).toLowerCase()), limit(1));
-    const querySnapshot = await getDocs(q);
+// // Temporarily removed to prevent crashes due to adminDb issues.
+// async function fetchUserProfile(username: string): Promise<UserProfileType | null> {
+//   console.warn(`[UserProfilePage fetchUserProfile] Data fetching for ${username} is temporarily disabled.`);
+//   // Return mock data or null to allow the page to render without server errors.
+//   return {
+//     uuid: `mock-${username}`,
+//     username: username,
+//     profile_name: `User ${username}`,
+//     profile_picture: undefined,
+//     bio: "Profile data is temporarily unavailable.",
+//   };
+// }
 
-    if (querySnapshot.empty) {
-      console.warn(`[UserProfilePage fetchUserProfile] No user found for username "${String(username)}"`);
-      return null;
-    }
-    const userProfileData = querySnapshot.docs[0].data() as UserProfileType;
-    console.log(`[UserProfilePage fetchUserProfile] Found profile for "${username}": UUID ${userProfileData.uuid}`);
-    return userProfileData;
-  } catch (error: any) {
-    console.error(`[UserProfilePage fetchUserProfile] Error using adminDb for ${username}:`, error.message, error.code, error.stack);
-    throw error; // Re-throw to be caught by Next.js error boundary or calling function
-  }
-}
-
-async function fetchUserCollections(
-  userId: string,
-  isOwnProfileView: boolean,
-  profileOwnerForCollections: UserProfileType | null
-): Promise<EnrichedCollection[]> {
-  console.log(`[UserProfilePage fetchUserCollections] Fetching collections for user ID: "${userId}", isOwnProfileView: ${isOwnProfileView}`);
-  if (!userId) {
-    console.warn("[UserProfilePage fetchUserCollections] userId is undefined, cannot fetch collections.");
-    return [];
-  }
-  try {
-    // adminDb is now imported and should be pre-initialized
-    const collectionsRef = collection(adminDb, 'collections');
-    let q;
-
-    if (isOwnProfileView) {
-      q = query(collectionsRef, where('owner', '==', userId), orderBy('createdAt', 'desc'));
-    } else {
-      q = query(
-        collectionsRef,
-        where('owner', '==', userId),
-        where('published', '==', true),
-        orderBy('createdAt', 'desc')
-      );
-    }
-
-    const querySnapshot = await getDocs(q);
-    console.log(`[UserProfilePage fetchUserCollections] Found ${querySnapshot.docs.length} collections for user ID: "${userId}" (isOwnProfileView: ${isOwnProfileView})`);
-
-    const collections = querySnapshot.docs.map(docSnapshot => {
-      const colData = docSnapshot.data() as Omit<CollectionType, 'id'>;
-      // Ensure Timestamps are correctly handled if they come from a different source/serialization
-      const createdAt = colData.createdAt instanceof Timestamp ? colData.createdAt : Timestamp.fromDate(new Date((colData.createdAt as any)._seconds * 1000));
-      const updatedAt = colData.updatedAt instanceof Timestamp ? colData.updatedAt : Timestamp.fromDate(new Date((colData.updatedAt as any)._seconds * 1000));
-
-      return {
-        id: docSnapshot.id,
-        ...colData,
-        createdAt: createdAt,
-        updatedAt: updatedAt,
-        ownerDetails: profileOwnerForCollections || undefined // Use the passed profileOwnerForCollections
-      } as EnrichedCollection;
-    });
-    return collections;
-  } catch (error: any) {
-    console.error(`[UserProfilePage fetchUserCollections] Error using adminDb for user ${userId}:`, error.message, error.code, error.stack);
-    throw error; // Re-throw
-  }
-}
+// async function fetchUserCollections(
+//   userId: string,
+//   isOwnProfileView: boolean,
+//   profileOwnerForCollections: UserProfileType | null
+// ): Promise<EnrichedCollection[]> {
+//   console.warn(`[UserProfilePage fetchUserCollections] Collection fetching for ${userId} is temporarily disabled.`);
+//   return [];
+// }
 
 
 export default async function UserProfilePage({ params }: ProfilePageProps) {
-  const cookieStore = cookies(); // Mark page as dynamic
+  // const cookieStore = cookies(); // Mark page as dynamic
   const { username } = params;
 
-  console.log(`[UserProfilePage DEBUG UserProfilePage] Server component execution START.`);
-  console.log(`[UserProfilePage DEBUG UserProfilePage] Rendering profile for username from params: "${username}"`);
+  console.log(`[UserProfilePage] Rendering basic profile for username from params: "${username}"`);
 
-  // It's generally better to fetch data sequentially if one depends on the other,
-  // or if you want clearer debugging flow.
-  const currentUser = await getCurrentUser(cookieStore);
-  console.log(`[UserProfilePage DEBUG UserProfilePage] currentUser from getCurrentUser:`, currentUser ? { uid: currentUser.uid, email: currentUser.email, name: currentUser.name } : null);
+  // // Temporarily disable server-side user fetching to avoid adminDb errors
+  // const currentUser = await getCurrentUser(cookieStore);
+  // const profileUser = await fetchUserProfile(username);
 
-  const profileUser = await fetchUserProfile(username);
-  console.log(`[UserProfilePage DEBUG UserProfilePage] profileUser from fetchUserProfile("${username}"):`, profileUser ? { uuid: profileUser.uuid, username: profileUser.username, bio: profileUser.bio, name: profileUser.profile_name } : null);
-
+  // Hardcoded/mocked profile user for display to prevent crash
+  const profileUser: UserProfileType | null = {
+    uuid: `mock-uuid-for-${username}`,
+    username: username,
+    profile_name: `User ${username}`,
+    profile_picture: `https://placehold.co/128x128.png?text=${username.charAt(0).toUpperCase()}`,
+    bio: "Profile information is temporarily displayed with mock data.",
+  };
+  
+  const collections: CollectionType[] = []; // Empty collections
 
   if (!profileUser) {
     return (
       <div className="flex flex-col items-center justify-center text-center py-12">
         <UserCircle className="w-24 h-24 text-muted-foreground mb-6" />
-        <h1 className="text-3xl font-bold mb-2">User Not Found</h1>
+        <h1 className="text-3xl font-bold mb-2">User Not Found (Temporarily)</h1>
         <p className="text-lg text-muted-foreground">
-          Sorry, we couldn't find a profile for "@{username}".
+          Profile data for "@{username}" is currently unavailable.
         </p>
       </div>
     );
   }
 
-  const isOwnProfile = !!currentUser && !!profileUser && currentUser.uid === profileUser.uuid;
-
-  console.log(`[UserProfilePage DEBUG UserProfilePage] Values for isOwnProfile check:`);
-  console.log(`  currentUser?.uid: ${currentUser?.uid}`);
-  console.log(`  profileUser.uuid: ${profileUser.uuid}`);
-  console.log(`  isOwnProfile evaluates to: ${isOwnProfile}`);
-
-  const collections = await fetchUserCollections(profileUser.uuid, isOwnProfile, profileUser);
-  console.log(`[UserProfilePage DEBUG UserProfilePage] Fetched ${collections.length} collections.`);
+  const isOwnProfile = false; // Assume not own profile to hide editing features
+  console.log(`[UserProfilePage] isOwnProfile temporarily set to: ${isOwnProfile}`);
 
 
   return (
@@ -142,7 +91,6 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
             <AvatarImage
               src={profileUser.profile_picture ?? undefined}
               alt={profileUser.profile_name}
-              priority // Added for LCP
               data-ai-hint="user profile large"
             />
             <AvatarFallback className="text-4xl">
@@ -155,7 +103,7 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
             <p className="text-sm text-muted-foreground mt-2 max-w-prose whitespace-pre-wrap">{profileUser.bio}</p>
           )}
         </CardHeader>
-        {isOwnProfile && (
+        {/* {isOwnProfile && (
           <CardContent className="p-6 border-t space-y-6">
             <ProfileImageUploader
               userId={profileUser.uuid}
@@ -168,26 +116,25 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
               currentBio={profileUser.bio || ""}
             />
           </CardContent>
-        )}
+        )} */}
       </Card>
 
       <section>
         <h2 className="text-3xl font-bold mb-6 flex items-center font-headline">
           <Library className="mr-3 h-8 w-8 text-primary" />
-          {isOwnProfile ? "My Collections" : `Collections by ${profileUser.profile_name}`} ({collections.length})
+          {isOwnProfile ? "My Collections" : `Collections by ${profileUser.profile_name}`} (Temporarily Hidden)
         </h2>
         {collections.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {collections.map((col) => (
-              // Pass profileUser as the owner if ownerDetails is not on the collection object (e.g., for newly created collections)
+            {/* {collections.map((col) => (
               <CollectionCard key={col.id} collection={col} owner={col.ownerDetails || profileUser} />
-            ))}
+            ))} */}
           </div>
         ) : (
           <div className="text-center py-10 border rounded-lg shadow-sm bg-card">
             <Info className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-lg">
-              {isOwnProfile ? "You haven't created any collections yet." : `${profileUser.profile_name} hasn't created any public collections yet.`}
+              Collections are temporarily unavailable.
             </p>
           </div>
         )}

@@ -11,29 +11,29 @@ if (!serviceAccountKeyJson) {
   throw new Error(errorMessage);
 }
 
+let adminAppInstance: admin.app.App;
+
 if (!admin.apps.length) {
   try {
     const serviceAccount = JSON.parse(serviceAccountKeyJson);
-    admin.initializeApp({
+    adminAppInstance = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      // projectId is usually inferred from the service account.
-      // If you have issues, you can explicitly add:
-      // projectId: serviceAccount.project_id,
     });
     console.log('[firebaseAdmin] Firebase Admin SDK initialized successfully.');
   } catch (e: any) {
     console.error('[firebaseAdmin] Firebase Admin SDK initialization error:', e.message, e.stack);
-    // Re-throw to ensure the server fails loudly if admin SDK can't init
-    // This helps in diagnosing startup problems.
     throw new Error(`Failed to initialize Firebase Admin SDK: ${e.message}`);
   }
 } else {
-  // This case is normal if the module is imported multiple times in a hot-reloading dev environment
-  // console.log('[firebaseAdmin] Firebase Admin SDK already initialized.');
+  adminAppInstance = admin.app(); // Get the default app if already initialized
+  // console.log('[firebaseAdmin] Firebase Admin SDK already initialized. Using existing app.');
 }
 
-// Export initialized services
-// These should be valid if initializeApp succeeded or was already done.
-export const adminAuth = admin.auth();
-export const adminDb = admin.firestore();
-export const adminStorage = admin.storage();
+export const adminAuth = adminAppInstance.auth();
+export const adminDb = adminAppInstance.firestore();
+export const adminStorage = adminAppInstance.storage();
+
+// Basic check to see if adminDb seems like a valid Firestore instance after initialization
+if (typeof adminDb?.collection !== 'function') {
+  console.error('[firebaseAdmin] CRITICAL VALIDATION FAILURE: adminDb.collection is not a function after initialization. Firestore Admin SDK might not be working correctly.');
+}
