@@ -16,23 +16,21 @@ interface EnrichedCollection extends Collection {
 
 export default function DiscoverPage() {
   const [collections, setCollections] = useState<EnrichedCollection[]>([]);
-  const [loading, setLoading] = useState(true); // Initialize loading to true
+  const [loading, setLoading] = useState(true); 
   const [error, setError] = useState<string | null>(null);
   const { user, loading: authLoading } = useAuthStatus();
 
   useEffect(() => {
     const fetchCollections = async () => {
-      // If auth is still loading, wait for it to complete.
       if (authLoading) {
-        setLoading(true); // Keep loading true while auth is resolving
+        setLoading(true); 
         return;
       }
 
-      // If auth is done, but there's no user or user.uid, they are not logged in.
       if (!user || !user.uid) {
         setCollections([]);
-        setLoading(false); // Not fetching, so not loading.
-        setError(null);    // Clear any previous error.
+        setLoading(false); 
+        setError(null);    
         return;
       }
 
@@ -50,7 +48,7 @@ export default function DiscoverPage() {
         const fetchedCollections: EnrichedCollection[] = [];
         for (const docSnapshot of querySnapshot.docs) {
           const colData = docSnapshot.data() as Omit<Collection, 'id' | 'createdAt' | 'updatedAt'> & { createdAt: Timestamp, updatedAt: Timestamp };
-          let ownerDetails: UserProfile | undefined = undefined;
+          let ownerDetails: UserProfile | undefined = undefined; // Explicit initialization
           
           if (colData.owner) {
              const userProfileDocRef = doc(db, 'users', colData.owner);
@@ -58,8 +56,10 @@ export default function DiscoverPage() {
              if (userProfileDocSnap.exists()) {
                  ownerDetails = userProfileDocSnap.data() as UserProfile;
              } else {
-                console.warn(`Owner profile for UID ${colData.owner} not found during collection fetch.`);
+                console.warn(`[DiscoverPage] Owner profile for UID ${colData.owner} (current user) not found for collection ${docSnapshot.id}.`);
              }
+          } else {
+            console.warn(`[DiscoverPage] Collection ${docSnapshot.id} is missing an owner UID (should be current user).`);
           }
 
           fetchedCollections.push({ 
@@ -80,20 +80,17 @@ export default function DiscoverPage() {
     };
 
     fetchCollections();
-  }, [user, authLoading, db]); // Added db as a dependency for completeness
+  }, [user, authLoading]); 
 
-  // Combined loading state for initial auth check and data fetching
   if (authLoading || loading) {
     return <DiscoverLoading />;
   }
 
   if (error) {
-    // This will display the "insufficient permissions" error from Firestore
     return <div className="text-center py-10 text-destructive">{error}</div>;
   }
   
   if (!user) {
-    // This state is hit if authLoading is false and user is null
     return (
       <div className="flex flex-col items-center text-center py-10">
         <Library className="w-16 h-16 text-primary mb-4" />
@@ -156,4 +153,3 @@ function CardSkeleton() {
     </div>
   );
 }
-

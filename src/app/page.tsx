@@ -16,29 +16,31 @@ async function getPublicCollections(): Promise<EnrichedCollection[]> {
     const collectionsQuery = query(
       collection(db, 'collections'),
       where('published', '==', true),
-      orderBy('createdAt', 'desc'), // Consider adding an index in Firestore if prompted
-      limit(20) // Paginate in a real app
+      orderBy('createdAt', 'desc'),
+      limit(20)
     );
     const querySnapshot = await getDocs(collectionsQuery);
     
     const collections: EnrichedCollection[] = [];
     for (const docSnapshot of querySnapshot.docs) {
-      // Properly handle Timestamp conversion if needed, though direct pass-through should work in Server Components
       const colData = docSnapshot.data() as Omit<CollectionType, 'id'>;
+      let ownerDetails: UserProfile | undefined = undefined; // Explicit initialization
       
-      let ownerDetails: UserProfile | undefined = undefined;
       if (colData.owner) {
          const userProfileDocRef = doc(db, 'users', colData.owner);
          const userProfileDocSnap = await getDoc(userProfileDocRef);
          if (userProfileDocSnap.exists()) {
              ownerDetails = userProfileDocSnap.data() as UserProfile;
+         } else {
+            console.warn(`[HomePage] Owner profile for UID ${colData.owner} not found for collection ${docSnapshot.id}.`);
          }
+      } else {
+        console.warn(`[HomePage] Collection ${docSnapshot.id} is missing an owner UID.`);
       }
 
       collections.push({ 
         ...colData, 
         id: docSnapshot.id,
-        // Ensure Timestamps are correctly handled if they cause issues; Firestore Timestamps are fine in Server Components
         createdAt: colData.createdAt as Timestamp, 
         updatedAt: colData.updatedAt as Timestamp,
         ownerDetails 
@@ -47,8 +49,6 @@ async function getPublicCollections(): Promise<EnrichedCollection[]> {
     return collections;
   } catch (error) {
     console.error("Error fetching public collections:", error);
-    // In a production app, you might want to throw the error or return an empty array
-    // and handle this more gracefully in the UI.
     return []; 
   }
 }
@@ -68,7 +68,6 @@ export default async function HomePage() {
         </p>
         <div className="flex space-x-4">
           <Button asChild size="lg">
-            {/* This button might now be slightly redundant if all collections are below, or could point to user's own collections */}
             <Link href="/discover"> 
               <Search className="mr-2 h-5 w-5" /> My Collections
             </Link>
