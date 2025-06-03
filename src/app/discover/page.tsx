@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, doc, getDoc, limit } from 'firebase/firestore'; // Removed orderBy
+import { collection, query, where, getDocs, doc, getDoc, limit, orderBy } from 'firebase/firestore'; // Added orderBy back
 import { db } from '@/lib/firebase';
 import type { Collection, UserProfile } from '@/types';
 import CollectionCard from '@/components/CollectionCard';
@@ -34,7 +34,7 @@ export default function DiscoverPage() {
           collection(db, 'collections'),
           // Filter by the authenticated user's ID
           where('userId', '==', user.uid),
-          // orderBy('createdAt', 'desc'), // Temporarily removed for index issue
+          orderBy('createdAt', 'desc'), // Added back for index creation
           limit(20) // Limit for performance, add pagination later
         );
         const querySnapshot = await getDocs(collectionsQuery);
@@ -127,3 +127,4 @@ function CardSkeleton() {
     </div>
   );
 }
+
