@@ -37,39 +37,41 @@ export default function DiscoverPage() {
       setLoading(true);
       setError(null);
       try {
+        // Fetch current user's profile first
+        let currentUserProfile: UserProfile | undefined = undefined;
+        if (user && user.uid) { // Ensure user and user.uid are defined
+            const userProfileDocRef = doc(db, 'users', user.uid);
+            const userProfileDocSnap = await getDoc(userProfileDocRef);
+            if (userProfileDocSnap.exists()) {
+                currentUserProfile = userProfileDocSnap.data() as UserProfile;
+            } else {
+                console.warn(`[DiscoverPage] Logged-in user's profile (UID: ${user.uid}) not found in 'users' collection.`);
+            }
+        } else {
+            console.warn("[DiscoverPage] User or user.uid is undefined, cannot fetch profile.");
+        }
+
+
         const collectionsQuery = query(
           collection(db, 'collections'),
-          where('owner', '==', user.uid),
+          where('owner', '==', user.uid), // Query for collections owned by the current user
           orderBy('createdAt', 'desc'),
           limit(20)
         );
         const querySnapshot = await getDocs(collectionsQuery);
         
-        const fetchedCollections: EnrichedCollection[] = [];
-        for (const docSnapshot of querySnapshot.docs) {
+        const fetchedCollections: EnrichedCollection[] = querySnapshot.docs.map(docSnapshot => {
           const colData = docSnapshot.data() as Omit<Collection, 'id' | 'createdAt' | 'updatedAt'> & { createdAt: Timestamp, updatedAt: Timestamp };
-          let ownerDetails: UserProfile | undefined = undefined; // Explicit initialization
-          
-          if (colData.owner) {
-             const userProfileDocRef = doc(db, 'users', colData.owner);
-             const userProfileDocSnap = await getDoc(userProfileDocRef);
-             if (userProfileDocSnap.exists()) {
-                 ownerDetails = userProfileDocSnap.data() as UserProfile;
-             } else {
-                console.warn(`[DiscoverPage] Owner profile for UID ${colData.owner} (current user) not found for collection ${docSnapshot.id}.`);
-             }
-          } else {
-            console.warn(`[DiscoverPage] Collection ${docSnapshot.id} is missing an owner UID (should be current user).`);
-          }
-
-          fetchedCollections.push({ 
-            ...colData, 
-            id: docSnapshot.id, 
+          // All these collections are owned by the current user, so use currentUserProfile
+          return {
+            ...colData,
+            id: docSnapshot.id,
             createdAt: colData.createdAt,
             updatedAt: colData.updatedAt,
-            ownerDetails 
-          });
-        }
+            ownerDetails: currentUserProfile // Use the pre-fetched profile
+          };
+        });
+        
         setCollections(fetchedCollections);
       } catch (err: any) {
         console.error("Error fetching collections: ", err);
