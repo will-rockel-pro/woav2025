@@ -15,7 +15,7 @@ import {
 import SignOutButton from '@/components/auth/SignOutButton';
 import { useAuthStatus } from '@/hooks/useAuthStatus';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserCircle, LogIn, PlusCircle, User, Library, LogOut } from 'lucide-react';
+import { UserCircle, LogIn, PlusCircle, User, Library, LogOut, Link as LinkIconLucide } from 'lucide-react'; // Renamed LinkIcon
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -66,15 +66,17 @@ export default function UserNav() {
     );
   }
 
-  const displayName = user.displayName || 'User';
+  const displayName = userProfile?.profile_name || user.displayName || 'User';
   const displayEmail = user.email || 'No email';
+  const avatarSrc = userProfile?.profile_picture || user.photoURL || undefined;
+
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={user.photoURL || undefined} alt={displayName} data-ai-hint="user avatar" />
+            <AvatarImage src={avatarSrc} alt={displayName} data-ai-hint="user avatar" />
             <AvatarFallback>
               {displayName ? displayName.charAt(0).toUpperCase() : <UserCircle />}
             </AvatarFallback>
@@ -110,6 +112,11 @@ export default function UserNav() {
           </DropdownMenuItem>
         )}
         <DropdownMenuItem asChild>
+          <Link href="/add-link" className="w-full justify-start flex items-center cursor-pointer">
+            <LinkIconLucide className="mr-2 h-4 w-4" /> Add New Link
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
           <Link href="/discover" className="w-full justify-start flex items-center cursor-pointer">
             <Library className="mr-2 h-4 w-4" /> My Collections
           </Link>
@@ -121,7 +128,6 @@ export default function UserNav() {
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild className="cursor-pointer">
-          {/* SignOutButton already includes LogOut icon and text */}
           <SignOutButton />
         </DropdownMenuItem>
       </DropdownMenuContent>
