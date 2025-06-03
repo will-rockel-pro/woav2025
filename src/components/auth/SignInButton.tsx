@@ -1,3 +1,4 @@
+
 'use client';
 
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
@@ -33,7 +34,7 @@ export default function SignInButton() {
             uuid: user.uid,
             username: username,
             profile_name: user.displayName || 'Anonymous User',
-            profile_picture: user.photoURL || undefined,
+            profile_picture: user.photoURL || null, // Use null if photoURL is falsy
           };
           await setDoc(userRef, newUserProfile);
           toast({ title: "Welcome!", description: "Your profile has been created." });
