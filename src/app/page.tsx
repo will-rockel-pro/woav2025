@@ -1,61 +1,64 @@
 
-import Link from 'next/link';
+import LinkFromNext from 'next/link'; // Renamed to avoid conflict
 import { Button } from '@/components/ui/button';
-import { Bookmark, Search, Users, Library } from 'lucide-react';
-// import { collection, query, where, getDocs, doc, getDoc, orderBy, limit, Timestamp } from 'firebase/firestore';
-// import { db } from '@/lib/firebase';
-// import type { Collection as CollectionType, UserProfile } from '@/types';
+import { Bookmark, Search, Users, Library, Info } from 'lucide-react';
+import { adminDb } from '@/lib/firebaseAdmin'; // Using adminDb
+import type { Collection as CollectionType, UserProfile } from '@/types';
+import { Timestamp } from 'firebase-admin/firestore'; // Use Admin SDK Timestamp
 import CollectionCard from '@/components/CollectionCard';
 
-// interface EnrichedCollection extends CollectionType {
-//   ownerDetails?: UserProfile;
-// }
+interface EnrichedCollection extends CollectionType {
+  ownerDetails?: UserProfile;
+}
 
-// async function getPublicCollections(): Promise<EnrichedCollection[]> {
-//   try {
-//     const collectionsQuery = query(
-//       collection(db, 'collections'),
-//       where('published', '==', true),
-//       orderBy('createdAt', 'desc'),
-//       limit(20)
-//     );
-//     const querySnapshot = await getDocs(collectionsQuery);
+async function getPublicCollections(): Promise<EnrichedCollection[]> {
+  if (!adminDb || typeof adminDb.collection !== 'function') {
+    console.error("[HomePage getPublicCollections] adminDb is not available or not a Firestore instance. Cannot fetch public collections.");
+    return [];
+  }
 
-//     const collections: EnrichedCollection[] = [];
-//     for (const docSnapshot of querySnapshot.docs) {
-//       const colData = docSnapshot.data() as Omit<CollectionType, 'id'>;
-//       let ownerDetails: UserProfile | undefined = undefined;
+  try {
+    const collectionsQuery = adminDb.collection('collections')
+      .where('published', '==', true)
+      .orderBy('createdAt', 'desc')
+      .limit(20);
+    
+    const querySnapshot = await collectionsQuery.get();
 
-//       if (colData.owner) {
-//          const userProfileDocRef = doc(db, 'users', colData.owner);
-//          const userProfileDocSnap = await getDoc(userProfileDocRef);
-//          if (userProfileDocSnap.exists()) {
-//              ownerDetails = userProfileDocSnap.data() as UserProfile;
-//          } else {
-//             console.warn(`[HomePage] Owner profile for UID ${colData.owner} not found for collection ${docSnapshot.id}.`);
-//          }
-//       } else {
-//         console.warn(`[HomePage] Collection ${docSnapshot.id} is missing an owner UID.`);
-//       }
+    const collections: EnrichedCollection[] = [];
+    for (const docSnapshot of querySnapshot.docs) {
+      const colData = docSnapshot.data() as Omit<CollectionType, 'id' | 'createdAt' | 'updatedAt'> & { createdAt: Timestamp, updatedAt: Timestamp };
+      let ownerDetails: UserProfile | undefined = undefined;
 
-//       collections.push({
-//         ...colData,
-//         id: docSnapshot.id,
-//         createdAt: colData.createdAt as Timestamp,
-//         updatedAt: colData.updatedAt as Timestamp,
-//         ownerDetails
-//       });
-//     }
-//     return collections;
-//   } catch (error) {
-//     console.error("Error fetching public collections:", error);
-//     return [];
-//   }
-// }
+      if (colData.owner) {
+         const userProfileDocRef = adminDb.collection('users').doc(colData.owner);
+         const userProfileDocSnap = await userProfileDocRef.get();
+         if (userProfileDocSnap.exists) {
+             ownerDetails = userProfileDocSnap.data() as UserProfile;
+         } else {
+            console.warn(`[HomePage] Owner profile for UID ${colData.owner} not found for collection ${docSnapshot.id}.`);
+         }
+      } else {
+        console.warn(`[HomePage] Collection ${docSnapshot.id} is missing an owner UID.`);
+      }
+
+      collections.push({
+        ...colData,
+        id: docSnapshot.id,
+        createdAt: colData.createdAt, 
+        updatedAt: colData.updatedAt, 
+        ownerDetails
+      });
+    }
+    return collections;
+  } catch (error: any) {
+    console.error("[HomePage getPublicCollections] Error fetching public collections:", error.message, error.code, error.stack);
+    return [];
+  }
+}
 
 export default async function HomePage() {
-  // const publicCollections = await getPublicCollections();
-  const publicCollections: any[] = []; // Temporarily use an empty array
+  const publicCollections = await getPublicCollections();
 
   return (
     <>
@@ -69,14 +72,14 @@ export default async function HomePage() {
         </p>
         <div className="flex space-x-4">
           <Button asChild size="lg">
-            <Link href="/discover">
+            <LinkFromNext href="/discover">
               <Search className="mr-2 h-5 w-5" /> My Collections
-            </Link>
+            </LinkFromNext>
           </Button>
           <Button asChild variant="outline" size="lg">
-            <Link href="/auth/signin">
+            <LinkFromNext href="/auth/signin">
               <Users className="mr-2 h-5 w-5" /> Join or Sign In
-            </Link>
+            </LinkFromNext>
           </Button>
         </div>
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl">
@@ -104,7 +107,7 @@ export default async function HomePage() {
             <Library className="w-16 h-16 text-primary mx-auto mb-4" />
             <h2 className="text-4xl font-bold font-headline">Explore Public Collections</h2>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto mt-2">
-              Discover what others are curating from around the web. (Data fetching temporarily disabled for debugging)
+              Discover what others are curating from around the web.
             </p>
         </div>
         {publicCollections.length > 0 ? (
@@ -114,7 +117,11 @@ export default async function HomePage() {
             ))}
           </div>
         ) : (
-          <p className="text-center text-muted-foreground py-10">Public collections temporarily unavailable while debugging. Check back soon!</p>
+          <div className="text-center py-10 border rounded-lg shadow-sm bg-card flex flex-col items-center">
+            <Info className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground text-lg">No public collections found yet, or there was an issue fetching them.</p>
+            <p className="text-sm text-muted-foreground mt-1">Check back soon or create the first public collection!</p>
+          </div>
         )}
       </section>
     </>

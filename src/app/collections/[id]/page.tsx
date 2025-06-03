@@ -12,7 +12,7 @@ import LinkCard from '@/components/LinkCard';
 import AddLinkForm from '@/components/AddLinkForm';
 import { useAuthStatus } from '@/hooks/useAuthStatus';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Info, Link as LinkIconFeather, ImageOff, UploadCloud, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Info, Link as LinkIconFeather, ImageOff, UploadCloud, Eye, EyeOff, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import NextLink from 'next/link'; // Renamed to avoid conflict with LinkType
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface EnrichedLink extends LinkType {
   id: string;
@@ -56,7 +57,17 @@ export default function CollectionPage() {
       }
 
       const fetchedCollection = { id: collectionDocSnap.id, ...collectionDocSnap.data() } as Collection;
+      
+
+      // Check visibility if user is not owner
+      if (user?.uid !== fetchedCollection.owner && !fetchedCollection.published) {
+        setError('This collection is private.');
+        setCollectionData(null); // Or set collectionData to fetchedCollection to show minimal info if desired
+        setLoading(false);
+        return;
+      }
       setCollectionData(fetchedCollection);
+
 
       if (fetchedCollection.owner) {
         const ownerDocRef = doc(db, 'users', fetchedCollection.owner);
@@ -85,7 +96,7 @@ export default function CollectionPage() {
     } finally {
       setLoading(false);
     }
-  }, [collectionIdFromParams]);
+  }, [collectionIdFromParams, user]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -167,7 +178,7 @@ export default function CollectionPage() {
   }, [collectionIdFromParams, fetchCollectionAndLinks]);
 
 
-  if (authLoading || (loading && !collectionData)) {
+  if (authLoading || (loading && !collectionData && !error)) {
     return (
       <div className="space-y-8">
         <Skeleton className="h-9 w-48 mb-6" />
@@ -269,9 +280,21 @@ export default function CollectionPage() {
           </div>
         )}
         <CardHeader>
-          <CardTitle className="text-4xl font-headline">{collectionData.title}</CardTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-4xl font-headline mb-2 sm:mb-0">{collectionData.title}</CardTitle>
+            {collectionData.published && (
+              <Badge variant="default" className="w-fit bg-green-600 hover:bg-green-700 text-white">
+                <Globe className="mr-1.5 h-3.5 w-3.5" /> Public Collection
+              </Badge>
+            )}
+            {!collectionData.published && isOwner && (
+                 <Badge variant="secondary" className="w-fit">
+                    <EyeOff className="mr-1.5 h-3.5 w-3.5" /> Private Collection
+                </Badge>
+            )}
+          </div>
           {ownerProfile && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground mt-1">
               By {ownerProfile.profile_name} (@{ownerProfile.username})
             </p>
           )}
