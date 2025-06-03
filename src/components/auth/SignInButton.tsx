@@ -15,18 +15,21 @@ export default function SignInButton() {
   const { toast } = useToast();
 
   const handleSignIn = async () => {
+    console.log('[SignInButton] Initiating Google Sign-In...');
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
+      console.log('[SignInButton] Google Sign-In successful. User UID:', user?.uid);
 
       if (user) {
         const idToken = await user.getIdToken(true);
+        console.log('[SignInButton] ID token obtained (first 10 chars):', idToken.substring(0,10) + '...');
 
-        // Create user profile in Firestore if it doesn't exist
         const userRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userRef);
 
         if (!userDoc.exists()) {
+          console.log('[SignInButton] User profile does not exist. Creating new profile...');
           const baseUsername = (user.displayName || user.email?.split('@')[0] || 'user').toLowerCase().replace(/[^a-z0-9]/gi, '');
           const randomSuffix = Math.floor(1000 + Math.random() * 9000);
           const username = `${baseUsername}${randomSuffix}`;
@@ -38,12 +41,14 @@ export default function SignInButton() {
             profile_picture: user.photoURL || null,
           };
           await setDoc(userRef, newUserProfile);
+          console.log('[SignInButton] New user profile created in Firestore.');
           toast({ title: "Welcome!", description: "Your profile has been created." });
         } else {
+          console.log('[SignInButton] Existing user profile found.');
           toast({ title: "Welcome back!" });
         }
 
-        // Send ID token to server to create session cookie
+        console.log('[SignInButton] Calling /api/auth/session-login...');
         const response = await fetch('/api/auth/session-login', {
           method: 'POST',
           headers: {
@@ -54,14 +59,19 @@ export default function SignInButton() {
 
         if (!response.ok) {
           const errorData = await response.json();
+          console.error('[SignInButton] API call to /api/auth/session-login FAILED. Status:', response.status, 'Error:', errorData.error);
           throw new Error(errorData.error || 'Failed to create session.');
+        } else {
+          const responseData = await response.json();
+          console.log('[SignInButton] API call to /api/auth/session-login SUCCEEDED. Status:', response.status, 'Response Data:', responseData);
         }
         
+        console.log('[SignInButton] Pushing to /discover and refreshing router...');
         router.push('/discover');
-        router.refresh(); // Important to refresh server components that rely on new session
+        router.refresh(); 
       }
     } catch (error: any) {
-      console.error('Error signing in with Google: ', error);
+      console.error('[SignInButton] Error during sign-in process:', error.message, error.code ? `(Code: ${error.code})` : '', error.stack);
       toast({
         title: 'Sign-in Failed',
         description: error.message || 'Could not sign in with Google. Please try again.',
