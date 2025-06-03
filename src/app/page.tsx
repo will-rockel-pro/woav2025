@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Bookmark, Search, Users, Library } from 'lucide-react';
 import { collection, query, where, getDocs, doc, getDoc, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Collection as CollectionType, UserProfile } from '@/types'; // Renamed to avoid conflict
+import type { Collection as CollectionType, UserProfile } from '@/types';
 import CollectionCard from '@/components/CollectionCard';
 
 interface EnrichedCollection extends CollectionType {
@@ -20,12 +20,12 @@ async function getPublicCollections(): Promise<EnrichedCollection[]> {
       limit(20)
     );
     const querySnapshot = await getDocs(collectionsQuery);
-    
+
     const collections: EnrichedCollection[] = [];
     for (const docSnapshot of querySnapshot.docs) {
       const colData = docSnapshot.data() as Omit<CollectionType, 'id'>;
-      let ownerDetails: UserProfile | undefined = undefined; // Explicit initialization
-      
+      let ownerDetails: UserProfile | undefined = undefined;
+
       if (colData.owner) {
          const userProfileDocRef = doc(db, 'users', colData.owner);
          const userProfileDocSnap = await getDoc(userProfileDocRef);
@@ -38,18 +38,18 @@ async function getPublicCollections(): Promise<EnrichedCollection[]> {
         console.warn(`[HomePage] Collection ${docSnapshot.id} is missing an owner UID.`);
       }
 
-      collections.push({ 
-        ...colData, 
+      collections.push({
+        ...colData,
         id: docSnapshot.id,
-        createdAt: colData.createdAt as Timestamp, 
+        createdAt: colData.createdAt as Timestamp,
         updatedAt: colData.updatedAt as Timestamp,
-        ownerDetails 
+        ownerDetails
       });
     }
     return collections;
   } catch (error) {
     console.error("Error fetching public collections:", error);
-    return []; 
+    return [];
   }
 }
 
@@ -68,7 +68,7 @@ export default async function HomePage() {
         </p>
         <div className="flex space-x-4">
           <Button asChild size="lg">
-            <Link href="/discover"> 
+            <Link href="/discover">
               <Search className="mr-2 h-5 w-5" /> My Collections
             </Link>
           </Button>
@@ -108,8 +108,8 @@ export default async function HomePage() {
         </div>
         {publicCollections.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {publicCollections.map((col) => (
-              <CollectionCard key={col.id} collection={col} owner={col.ownerDetails} />
+            {publicCollections.map((col, index) => (
+              <CollectionCard key={col.id} collection={col} owner={col.ownerDetails} priority={index < 4} />
             ))}
           </div>
         ) : (

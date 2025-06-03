@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { UserCircle, Library, Info } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth/server';
 import ProfileImageUploader from '@/components/ProfileImageUploader';
-import { cookies } from 'next/headers'; // Import for forcing dynamic rendering if needed
+import { cookies } from 'next/headers'; // Import for forcing dynamic rendering
 
 interface ProfilePageProps {
   params: {
@@ -22,6 +22,7 @@ interface EnrichedCollection extends CollectionType {
 
 async function fetchUserProfile(username: string): Promise<UserProfileType | null> {
   const usersRef = collection(db, 'users');
+  // Ensure username is a string before querying.
   const q = query(usersRef, where('username', '==', String(username)), limit(1));
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) {
@@ -66,7 +67,7 @@ async function fetchUserCollections(
   }
 
   const querySnapshot = await getDocs(q);
-  
+
   const collections = querySnapshot.docs.map(docSnapshot => {
     const colData = docSnapshot.data() as Omit<CollectionType, 'id'>;
     return {
@@ -82,22 +83,18 @@ async function fetchUserCollections(
 
 
 export default async function UserProfilePage({ params }: ProfilePageProps) {
-  // Explicitly call cookies() to ensure Next.js treats this page as dynamic.
-  // This is one way to address the "cookies() should be awaited" error.
-  cookies(); 
-
-  const { username } = params; // Destructure username here
+  const cookieStore = cookies(); // Call cookies() at the top to ensure dynamic rendering and get store instance
+  const { username } = params;
 
   console.log(`[UserProfilePage] Rendering profile for username: "${username}"`);
 
-  // Fetch current user (session) first
-  const currentUser = await getCurrentUser();
-  console.log(`[UserProfilePage DEBUG] currentUser from getCurrentUser(): UID = ${currentUser?.uid}`);
+  // Pass the cookieStore instance to getCurrentUser
+  const currentUser = await getCurrentUser(cookieStore);
+  console.log(`[UserProfilePage DEBUG] currentUser from getCurrentUser(cookieStore): UID = ${currentUser?.uid}`);
 
-  // Then fetch the profile user based on the username from params
   const profileUser = await fetchUserProfile(username);
   console.log(`[UserProfilePage DEBUG] profileUser from fetchUserProfile("${username}"): UID = ${profileUser?.uuid}`);
-  
+
 
   if (!profileUser) {
     return (
@@ -112,13 +109,12 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
   }
 
   const isOwnProfile = !!currentUser && !!profileUser && currentUser.uid === profileUser.uuid;
-  
+
   console.log(`[UserProfilePage DEBUG] For profile @${username}:`);
-  console.log(`  Current User UID (after await): ${currentUser?.uid}`);
-  console.log(`  Profile User UID (after await): ${profileUser?.uuid}`);
+  console.log(`  Current User UID (from cookieStore): ${currentUser?.uid}`);
+  console.log(`  Profile User UID (from DB): ${profileUser?.uuid}`);
   console.log(`  isOwnProfile evaluates to: ${isOwnProfile}`);
 
-  // Fetch collections after profileUser is confirmed
   const collections = await fetchUserCollections(profileUser.uuid, isOwnProfile);
 
   return (
@@ -126,9 +122,9 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
       <Card className="shadow-lg">
         <CardHeader className="items-center text-center p-6 sm:p-8">
           <Avatar className="h-24 w-24 sm:h-32 sm:w-32 mb-4 border-4 border-background shadow-md">
-            <AvatarImage 
-              src={profileUser.profile_picture ?? undefined} 
-              alt={profileUser.profile_name} 
+            <AvatarImage
+              src={profileUser.profile_picture ?? undefined}
+              alt={profileUser.profile_name}
               priority // Added priority for LCP
               data-ai-hint="user profile large"
             />

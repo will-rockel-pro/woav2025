@@ -1,19 +1,20 @@
 
 import Image from 'next/image';
-import NextLink from 'next/link'; 
+import NextLink from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { Collection, UserProfile } from '@/types';
 import { Eye, UserCircle, EyeOff } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar components
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface CollectionCardProps {
   collection: Collection;
-  owner?: UserProfile | null; 
+  owner?: UserProfile | null;
+  priority?: boolean; // New prop for LCP optimization
 }
 
-export default function CollectionCard({ collection, owner }: CollectionCardProps) {
+export default function CollectionCard({ collection, owner, priority = false }: CollectionCardProps) {
   return (
     <Card className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
       <CardHeader className="p-0 relative">
@@ -25,6 +26,7 @@ export default function CollectionCard({ collection, owner }: CollectionCardProp
             height={400}
             className="w-full h-48 object-cover"
             data-ai-hint="collection abstract"
+            priority={priority} // Apply priority prop
           />
         </NextLink>
       </CardHeader>
