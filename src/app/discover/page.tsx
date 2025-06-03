@@ -1,12 +1,13 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, doc, getDoc, limit, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, limit } from 'firebase/firestore'; // Removed orderBy
 import { db } from '@/lib/firebase';
 import type { Collection, UserProfile } from '@/types';
 import CollectionCard from '@/components/CollectionCard';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Compass } from 'lucide-react';
+import { Library } from 'lucide-react'; // Changed Compass to Library
 
 interface EnrichedCollection extends Collection {
   ownerDetails?: UserProfile;
@@ -17,6 +18,13 @@ export default function DiscoverPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Assuming useAuthStatus hook provides the authenticated user or null
+  // You need to import and use your actual useAuthStatus hook here
+  // const { user, loading: authLoading } = useAuthStatus();
+  // For demonstration, let's simulate a user ID (replace with actual hook)
+  const user = { uid: 'replace-with-actual-user-id' }; // Replace with actual user object from hook
+  const authLoading = false; // Replace with actual loading state from hook
+
   useEffect(() => {
     const fetchCollections = async () => {
       setLoading(true);
@@ -24,8 +32,9 @@ export default function DiscoverPage() {
       try {
         const collectionsQuery = query(
           collection(db, 'collections'),
-          where('published', '==', true),
-          orderBy('updatedAt', 'desc'),
+          // Filter by the authenticated user's ID
+          where('userId', '==', user.uid),
+          // orderBy('createdAt', 'desc'), // Temporarily removed for index issue
           limit(20) // Limit for performance, add pagination later
         );
         const querySnapshot = await getDocs(collectionsQuery);
@@ -51,10 +60,15 @@ export default function DiscoverPage() {
       }
     };
 
-    fetchCollections();
-  }, []);
+    // Fetch collections only if the user is authenticated and auth status is not loading
+    if (user && !authLoading) {
+      fetchCollections();
+    } else if (!user && !authLoading) {
+      setLoading(false); // Stop loading if no user is authenticated
+    }
+  }, [user, authLoading]); // Depend on user and authLoading state
 
-  if (loading) {
+  if (loading || authLoading) {
     return <DiscoverLoading />;
   }
 
@@ -65,13 +79,13 @@ export default function DiscoverPage() {
   return (
     <div className="space-y-8">
       <div className="flex flex-col items-center text-center">
-        <Compass className="w-16 h-16 text-primary mb-4" />
-        <h1 className="text-4xl font-bold font-headline mb-2">Discover Collections</h1>
+        <Library className="w-16 h-16 text-primary mb-4" /> {/* Changed icon to Library */}
+        <h1 className="text-4xl font-bold font-headline mb-2">My Collections</h1> {/* Changed title */}
         <p className="text-lg text-muted-foreground max-w-xl">
-          Explore curated collections from the WOAV Lite community. Find inspiration and new interests.
+          View and manage your personal collections.
         </p>
       </div>
-
+ 
       {collections.length === 0 ? (
         <p className="text-center text-muted-foreground py-10">No published collections found yet. Be the first to create one!</p>
       ) : (
