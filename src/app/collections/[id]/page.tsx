@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { doc, getDoc, collection, query, where, orderBy, Timestamp, addDoc, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore'; // Added serverTimestamp
+import { doc, getDoc, collection, query, where, orderBy, Timestamp, addDoc, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { Collection, Link as LinkType, UserProfile } from '@/types';
@@ -94,20 +94,32 @@ export default function CollectionPage() {
   };
 
   const handleImageUpload = async () => {
-    if (!imageFile || !user || !collectionData) return;
+    if (!imageFile || !user || !collectionData) {
+      console.error("Image upload preconditions not met:", { hasImageFile: !!imageFile, hasUser: !!user, hasCollectionData: !!collectionData });
+      return;
+    }
+
+    const currentCollectionId = collectionData.id; // This is the collectionId from useParams, via collectionData state
+    const storagePath = `collection_images/${currentCollectionId}/${imageFile.name}`;
+
+    console.log("Attempting image upload with the following details:");
+    console.log("Current User UID:", user.uid);
+    console.log("Target Collection ID (for storage path & Firestore doc):", currentCollectionId);
+    console.log("Storage Path:", storagePath);
+
 
     setUploadingImage(true);
     try {
-      const storageRef = ref(storage, `collection_images/${collectionId}/${imageFile.name}`);
+      const storageRef = ref(storage, storagePath);
       const snapshot = await uploadBytes(storageRef, imageFile);
       const downloadURL = await getDownloadURL(snapshot.ref);
 
-      const collectionDocRef = doc(db, 'collections', collectionId);
-      const newUpdatedAt = Timestamp.now(); // Client-side approximation for immediate UI
+      const collectionDocRef = doc(db, 'collections', currentCollectionId);
+      const newUpdatedAt = Timestamp.now(); 
 
       await updateDoc(collectionDocRef, {
         image: downloadURL,
-        updatedAt: serverTimestamp(), // Update with server timestamp
+        updatedAt: serverTimestamp(),
       });
 
       setCollectionData(prevData => {
@@ -115,7 +127,7 @@ export default function CollectionPage() {
         return {
           ...prevData,
           image: downloadURL,
-          updatedAt: newUpdatedAt, // Update local state with client-side timestamp
+          updatedAt: newUpdatedAt, 
         };
       });
       setImageFile(null);
@@ -133,7 +145,7 @@ export default function CollectionPage() {
   }, [fetchCollectionAndLinks]);
 
   const handleLinkAdded = (newLink: LinkType) => {
-    fetchCollectionAndLinks();
+    fetchCollectionAndLinks(); // Re-fetch to include the new link (and potentially update link count etc.)
   };
 
   if (authLoading || loading) {
