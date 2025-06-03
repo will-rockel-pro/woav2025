@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { UserCircle, Library, Info } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth/server';
 import ProfileImageUploader from '@/components/ProfileImageUploader';
+import { cookies } from 'next/headers'; // Import for forcing dynamic rendering if needed
 
 interface ProfilePageProps {
   params: {
@@ -21,7 +22,6 @@ interface EnrichedCollection extends CollectionType {
 
 async function fetchUserProfile(username: string): Promise<UserProfileType | null> {
   const usersRef = collection(db, 'users');
-  // Ensure username is treated as a string for the query
   const q = query(usersRef, where('username', '==', String(username)), limit(1));
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) {
@@ -81,22 +81,22 @@ async function fetchUserCollections(
 }
 
 
-export default async function UserProfilePage({ params: { username } }: ProfilePageProps) {
-  // username is now directly available from destructured params
+export default async function UserProfilePage({ params }: ProfilePageProps) {
+  // Explicitly call cookies() to ensure Next.js treats this page as dynamic.
+  // This is one way to address the "cookies() should be awaited" error.
+  cookies(); 
 
-  // Initiate async data fetching in parallel
-  const profileUserPromise = fetchUserProfile(username);
-  const currentUserPromise = getCurrentUser(); 
+  const { username } = params; // Destructure username here
 
-  // Await all promises
-  const [profileUser, currentUser] = await Promise.all([
-    profileUserPromise,
-    currentUserPromise,
-  ]);
+  console.log(`[UserProfilePage] Rendering profile for username: "${username}"`);
 
-  console.log(`[UserProfilePage DEBUG] For profile @${username}:`);
-  console.log(`  Current User UID from server: ${currentUser?.uid}`);
-  console.log(`  Profile User (fetched for username '${username}') UID from DB: ${profileUser?.uuid}`);
+  // Fetch current user (session) first
+  const currentUser = await getCurrentUser();
+  console.log(`[UserProfilePage DEBUG] currentUser from getCurrentUser(): UID = ${currentUser?.uid}`);
+
+  // Then fetch the profile user based on the username from params
+  const profileUser = await fetchUserProfile(username);
+  console.log(`[UserProfilePage DEBUG] profileUser from fetchUserProfile("${username}"): UID = ${profileUser?.uuid}`);
   
 
   if (!profileUser) {
@@ -112,8 +112,13 @@ export default async function UserProfilePage({ params: { username } }: ProfileP
   }
 
   const isOwnProfile = !!currentUser && !!profileUser && currentUser.uid === profileUser.uuid;
+  
+  console.log(`[UserProfilePage DEBUG] For profile @${username}:`);
+  console.log(`  Current User UID (after await): ${currentUser?.uid}`);
+  console.log(`  Profile User UID (after await): ${profileUser?.uuid}`);
   console.log(`  isOwnProfile evaluates to: ${isOwnProfile}`);
 
+  // Fetch collections after profileUser is confirmed
   const collections = await fetchUserCollections(profileUser.uuid, isOwnProfile);
 
   return (
@@ -124,7 +129,7 @@ export default async function UserProfilePage({ params: { username } }: ProfileP
             <AvatarImage 
               src={profileUser.profile_picture ?? undefined} 
               alt={profileUser.profile_name} 
-              priority  // Added priority for LCP
+              priority // Added priority for LCP
               data-ai-hint="user profile large"
             />
             <AvatarFallback className="text-4xl">
