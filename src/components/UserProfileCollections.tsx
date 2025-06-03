@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase'; // Using client-side db
 import type { Collection as CollectionType, UserProfile } from '@/types';
 import CollectionCard from '@/components/CollectionCard';
@@ -16,7 +16,7 @@ interface UserProfileCollectionsProps {
 }
 
 interface EnrichedCollection extends CollectionType {
-  ownerDetails?: UserProfile; // For simplicity, ownerDetails might not be fully populated here
+  ownerDetails?: UserProfile;
 }
 
 export default function UserProfileCollections({ userId, isOwnProfileView, profileOwnerName }: UserProfileCollectionsProps) {
@@ -26,19 +26,22 @@ export default function UserProfileCollections({ userId, isOwnProfileView, profi
 
   useEffect(() => {
     const fetchCollections = async () => {
+      if (!userId) {
+        setLoading(false);
+        setError("User ID is missing.");
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
         let q;
         if (isOwnProfileView) {
-          // Fetch all collections (public and private) for the owner
           q = query(
             collection(db, 'collections'),
             where('owner', '==', userId),
             orderBy('createdAt', 'desc')
           );
         } else {
-          // Fetch only public collections for other users
           q = query(
             collection(db, 'collections'),
             where('owner', '==', userId),
@@ -47,15 +50,30 @@ export default function UserProfileCollections({ userId, isOwnProfileView, profi
           );
         }
         const querySnapshot = await getDocs(q);
-        const fetchedCollections = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          // Timestamps need to be handled if they are stored as Firebase Timestamps
-          createdAt: (doc.data().createdAt as Timestamp),
-          updatedAt: (doc.data().updatedAt as Timestamp),
-        } as EnrichedCollection));
         
+        const fetchedCollectionsPromises = querySnapshot.docs.map(async (docSnapshot) => {
+          const colData = docSnapshot.data();
+          let ownerDetails: UserProfile | undefined = undefined;
+          // Fetch owner details for each collection - important for CollectionCard
+          if (colData.owner) {
+            const ownerDocRef = doc(db, 'users', colData.owner);
+            const ownerDocSnap = await getDoc(ownerDocRef);
+            if (ownerDocSnap.exists()) {
+              ownerDetails = ownerDocSnap.data() as UserProfile;
+            }
+          }
+          return {
+            id: docSnapshot.id,
+            ...colData,
+            createdAt: (colData.createdAt as Timestamp),
+            updatedAt: (colData.updatedAt as Timestamp),
+            ownerDetails: ownerDetails, // Add owner details here
+          } as EnrichedCollection;
+        });
+
+        const fetchedCollections = await Promise.all(fetchedCollectionsPromises);
         setCollections(fetchedCollections);
+
       } catch (err: any) {
         console.error("Error fetching user collections:", err);
         setError(err.message || "Failed to load collections.");
@@ -64,9 +82,7 @@ export default function UserProfileCollections({ userId, isOwnProfileView, profi
       }
     };
 
-    if (userId) {
-      fetchCollections();
-    }
+    fetchCollections();
   }, [userId, isOwnProfileView]);
 
   if (loading) {
@@ -109,9 +125,7 @@ export default function UserProfileCollections({ userId, isOwnProfileView, profi
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {collections.map((col) => (
-        // Note: The owner prop for CollectionCard might be simplified here as we are fetching based on userId
-        // A more complex setup might involve fetching full ownerDetails for each collection if needed.
-        <CollectionCard key={col.id} collection={col} />
+        <CollectionCard key={col.id} collection={col} owner={col.ownerDetails} />
       ))}
     </div>
   );

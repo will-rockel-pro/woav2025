@@ -48,22 +48,39 @@ export default function SignUpPage() {
       if (user) {
         // Create user profile in Firestore
         const userRef = doc(db, "users", user.uid);
-        // Simplified username generation. Robust uniqueness requires server-side validation or more complex client-side checks.
         const baseUsername = (user.email?.split('@')[0] || 'user').toLowerCase().replace(/[^a-z0-9]/gi, '');
-        const randomSuffix = Math.floor(1000 + Math.random() * 9000); // 4-digit random number
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000); 
         const username = `${baseUsername}${randomSuffix}`;
 
         const newUserProfile: UserProfile = {
           uuid: user.uid,
           username: username,
-          profile_name: user.email?.split('@')[0] || 'New User', // Default profile name
-          profile_picture: null, // Use null instead of undefined for Firestore
-          bio: null, // Initialize bio as null
+          profile_name: user.displayName || user.email?.split('@')[0] || 'New User', 
+          profile_picture: user.photoURL || null, 
+          // bio: null, // Bio feature temporarily removed
         };
         await setDoc(userRef, newUserProfile);
 
         toast({ title: "Account Created!", description: "Welcome! Your account has been successfully created." });
-        router.push("/discover"); // Redirect to a relevant page after sign-up
+        
+        // Attempt to create server session immediately after signup
+        const idToken = await user.getIdToken(true);
+        const response = await fetch('/api/auth/session-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('[SignUp] API call to /api/auth/session-login FAILED. Status:', response.status, 'Error:', errorData.error);
+          toast({ title: "Session Creation Failed", description: errorData.error || "Could not establish a server session post-signup.", variant: "destructive" });
+        } else {
+          console.log('[SignUp] API call to /api/auth/session-login SUCCEEDED post-signup.');
+        }
+
+        router.push("/discover"); 
+        router.refresh();
       }
     } catch (err: any) {
       setError(err.message);

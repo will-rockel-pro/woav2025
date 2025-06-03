@@ -1,17 +1,15 @@
 
 'use server';
 
-import { collection, query, where, getDocs, limit, orderBy, Timestamp } from 'firebase/firestore';
-import { adminDb } from '@/lib/firebaseAdmin'; // Ensure this path is correct
-import type { UserProfile as UserProfileType, Collection as CollectionType } from '@/types';
+import { cookies } from 'next/headers';
+import type { UserProfile as UserProfileType } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { UserCircle, Library, Info } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth/server';
-import { cookies } from 'next/headers';
 import UserProfileCollections from '@/components/UserProfileCollections';
-// import ProfileImageUploader from '@/components/ProfileImageUploader';
-// import ProfileBioEditor from '@/components/ProfileBioEditor';
+import { adminDb } from '@/lib/firebaseAdmin'; // We still need this for a simple user fetch
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 
 
 interface ProfilePageProps {
@@ -20,13 +18,13 @@ interface ProfilePageProps {
   };
 }
 
-async function fetchUserProfile(username: string): Promise<UserProfileType | null> {
-  console.log(`[UserProfilePage fetchUserProfile] Attempting to fetch profile for username: "${username}"`);
+// Simplified server-side fetch for basic user details.
+async function fetchBasicUserProfile(username: string): Promise<UserProfileType | null> {
+  console.log(`[UserProfilePage fetchBasicUserProfile] Attempting to fetch profile for username: "${username}"`);
 
-  // Critical check for adminDb before use
   if (!adminDb || typeof adminDb.collection !== 'function') {
-    console.error(`[UserProfilePage fetchUserProfile] adminDb is not available or not a valid Firestore instance for username "${username}". Check firebaseAdmin.ts initialization and the FIREBASE_SERVICE_ACCOUNT_KEY_JSON environment variable.`);
-    return null; // Prevent further execution and crash
+    console.error(`[UserProfilePage fetchBasicUserProfile] adminDb is not available or not a valid Firestore instance for username "${username}". Check firebaseAdmin.ts initialization and the FIREBASE_SERVICE_ACCOUNT_KEY_JSON environment variable.`);
+    return null;
   }
 
   try {
@@ -35,22 +33,21 @@ async function fetchUserProfile(username: string): Promise<UserProfileType | nul
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
-      console.warn(`[UserProfilePage fetchUserProfile] No profile found for username: "${username}"`);
+      console.warn(`[UserProfilePage fetchBasicUserProfile] No profile found for username: "${username}"`);
       return null;
     }
     const userDoc = querySnapshot.docs[0];
-    // Ensure all fields are correctly typed, especially if some are optional
     const userProfileData = {
-        uuid: userDoc.id,
+        uuid: userDoc.id, // Use document ID as uuid if not stored in field
         username: userDoc.data().username,
         profile_name: userDoc.data().profile_name,
-        profile_picture: userDoc.data().profile_picture || null, // Default to null if undefined
-        bio: userDoc.data().bio || null, // Default to null if undefined
+        profile_picture: userDoc.data().profile_picture || null,
+        // bio: userDoc.data().bio || null, // Bio removed for now
     } as UserProfileType;
-    console.log(`[UserProfilePage fetchUserProfile] Found profile for "${username}": UUID ${userProfileData.uuid}`);
+    console.log(`[UserProfilePage fetchBasicUserProfile] Found profile for "${username}": UUID ${userProfileData.uuid}`);
     return userProfileData;
   } catch (error: any) {
-    console.error(`[UserProfilePage fetchUserProfile] Error using adminDb for ${username}:`, error.message, error.code, error.stack);
+    console.error(`[UserProfilePage fetchBasicUserProfile] Error using adminDb for ${username}:`, error.message, error.code, error.stack);
     // Do not re-throw here to allow page to render with a "not found" state
     return null;
   }
@@ -61,8 +58,8 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
   const { username } = params;
   console.log(`[UserProfilePage] Rendering profile for username from params: "${username}"`);
 
-  const currentUser = await getCurrentUser(cookieStore);
-  const profileUser = await fetchUserProfile(username);
+  const currentUser = await getCurrentUser(cookieStore); // Still useful for isOwnProfile
+  const profileUser = await fetchBasicUserProfile(username);
 
   if (!profileUser) {
     return (
@@ -70,15 +67,13 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
         <UserCircle className="w-24 h-24 text-muted-foreground mb-6" />
         <h1 className="text-3xl font-bold mb-2">User Not Found</h1>
         <p className="text-lg text-muted-foreground">
-          The profile for "@{username}" could not be found. This might be due to a server error or the user not existing.
+          The profile for "@{username}" could not be found.
         </p>
-         <p className="text-sm text-muted-foreground mt-2">Please check the server logs for more details if this issue persists.</p>
       </div>
     );
   }
 
   const isOwnProfile = !!(currentUser && currentUser.uid === profileUser.uuid);
-  // console.log(`[UserProfilePage] isOwnProfile determined as: ${isOwnProfile} (currentUser UID: ${currentUser?.uid}, profileUser UUID: ${profileUser.uuid})`);
 
   return (
     <div className="space-y-10">
@@ -88,7 +83,7 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
             <AvatarImage
               src={profileUser.profile_picture ?? undefined}
               alt={profileUser.profile_name}
-              data-ai-hint="user profile large"
+              data-ai-hint="user profile placeholder"
             />
             <AvatarFallback className="text-4xl">
               {profileUser.profile_name ? profileUser.profile_name.charAt(0).toUpperCase() : <UserCircle />}
@@ -96,16 +91,9 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
           </Avatar>
           <CardTitle className="text-3xl sm:text-4xl font-headline">{profileUser.profile_name}</CardTitle>
           <CardDescription className="text-lg text-muted-foreground">@{profileUser.username}</CardDescription>
-          {profileUser.bio && (
-            <p className="text-sm text-muted-foreground mt-2 max-w-prose whitespace-pre-wrap">{profileUser.bio}</p>
-          )}
+          {/* Bio display removed for now */}
         </CardHeader>
-        {/* {isOwnProfile && (
-          <CardContent className="border-t pt-6 space-y-6">
-            <ProfileImageUploader userId={profileUser.uuid} currentImageUrl={profileUser.profile_picture} userName={profileUser.profile_name} />
-            <ProfileBioEditor userId={profileUser.uuid} currentBio={profileUser.bio || ''} />
-          </CardContent>
-        )} */}
+        {/* ProfileImageUploader and ProfileBioEditor removed for now */}
       </Card>
 
       <section>
@@ -113,6 +101,7 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
           <Library className="mr-3 h-8 w-8 text-primary" />
           {isOwnProfile ? "My Collections" : `Collections by ${profileUser.profile_name}`}
         </h2>
+        {/* UserProfileCollections will handle fetching and display on the client */}
         <UserProfileCollections userId={profileUser.uuid} isOwnProfileView={isOwnProfile} profileOwnerName={profileUser.profile_name} />
       </section>
     </div>

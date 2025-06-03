@@ -5,8 +5,8 @@ export interface UserProfile {
   uuid: string;
   username: string; // Globally unique, not email
   profile_name: string;
-  profile_picture?: string; // Optional URL
-  bio?: string | null; // Optional, max 280 characters
+  profile_picture?: string | null; // Optional URL, explicitly allow null
+  // bio?: string | null; // Bio feature temporarily removed for stability
 }
 
 export interface Collection {

@@ -3,52 +3,42 @@ import admin from 'firebase-admin';
 
 const serviceAccountKeyJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_JSON;
 
-let adminInitialized = false;
-let adminApp: admin.app.App | undefined = undefined;
+let adminApp: admin.app.App;
 
 if (!admin.apps.length) {
-  if (serviceAccountKeyJson) {
+  if (!serviceAccountKeyJson) {
+    console.error('[firebaseAdmin] CRITICAL ERROR: FIREBASE_SERVICE_ACCOUNT_KEY_JSON environment variable is not set. Firebase Admin SDK cannot be initialized.');
+    // To prevent hard crashes, we'll export undefined for services if this happens.
+    // Consuming code should check for their existence.
+  } else {
     try {
       const serviceAccount = JSON.parse(serviceAccountKeyJson);
       adminApp = admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
       });
       console.log('[firebaseAdmin] Firebase Admin SDK initialized successfully.');
-      adminInitialized = true;
     } catch (e: any) {
-      console.error('[firebaseAdmin] Firebase Admin SDK initialization error:', e.message, e.stack);
-      // adminInitialized remains false
+      console.error('[firebaseAdmin] Firebase Admin SDK initialization error:', e.message);
+      if (e.message.includes('json')) {
+        console.error('[firebaseAdmin] This might be due to an invalid JSON string in FIREBASE_SERVICE_ACCOUNT_KEY_JSON.');
+      }
+      // Export undefined for services if initialization fails.
     }
-  } else {
-    console.error('[firebaseAdmin] CRITICAL ERROR: FIREBASE_SERVICE_ACCOUNT_KEY_JSON environment variable is not set. Firebase Admin SDK cannot be initialized.');
-    // adminInitialized remains false
   }
 } else {
-  adminApp = admin.app(); // Get the default app if already initialized
+  adminApp = admin.app();
   // console.log('[firebaseAdmin] Firebase Admin SDK already initialized. Using existing app.');
-  adminInitialized = true;
 }
 
-// Assign Firestore, Auth, Storage instances if adminApp was successfully initialized/retrieved
-const tempAdminDb = adminApp ? adminApp.firestore() : undefined;
-const tempAdminAuth = adminApp ? adminApp.auth() : undefined;
-const tempAdminStorage = adminApp ? adminApp.storage() : undefined;
+// Assign Firestore, Auth, Storage instances. They will be undefined if adminApp isn't set.
+export const adminDb = adminApp!?.firestore() as admin.firestore.Firestore;
+export const adminAuth = adminApp!?.auth() as admin.auth.Auth;
+export const adminStorage = adminApp!?.storage() as admin.storage.Storage;
 
-// Perform a check right after attempting to get the firestore instance
-if (adminInitialized && adminApp) {
-  if (tempAdminDb && typeof tempAdminDb.collection === 'function') {
-    // console.log('[firebaseAdmin] VALIDATION: tempAdminDb.collection IS a function. Exporting valid adminDb.');
-  } else {
-    console.error('[firebaseAdmin] CRITICAL VALIDATION FAILURE: tempAdminDb.collection is NOT a function, or tempAdminDb is undefined even after supposed initialization. Firestore Admin SDK might not be working correctly.');
-  }
-} else if (!adminInitialized) {
-    console.warn('[firebaseAdmin] Admin SDK was not initialized. Exported admin services will be non-functional.');
+// Basic check for the exported services.
+if (adminApp && (!adminDb || typeof adminDb.collection !== 'function')) {
+  console.error('[firebaseAdmin] CRITICAL VALIDATION FAILURE: adminDb.collection is NOT a function, or adminDb is undefined even after supposed initialization. Firestore Admin SDK might not be working correctly.');
 }
-
-
-// Export the instances. They will be undefined if initialization failed.
-// Type assertions are used to satisfy TypeScript's expectation of the export type,
-// but runtime checks in consuming code are crucial.
-export const adminDb = tempAdminDb as admin.firestore.Firestore;
-export const adminAuth = tempAdminAuth as admin.auth.Auth;
-export const adminStorage = tempAdminStorage as admin.storage.Storage;
+if (adminApp && (!adminAuth || typeof adminAuth.verifyIdToken !== 'function')) {
+  console.error('[firebaseAdmin] CRITICAL VALIDATION FAILURE: adminAuth.verifyIdToken is NOT a function, or adminAuth is undefined. Auth Admin SDK might not be working correctly.');
+}
