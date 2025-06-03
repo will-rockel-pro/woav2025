@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc, collection, query, where, orderBy, Timestamp, addDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, orderBy, Timestamp, addDoc, getDocs } from 'firebase/firestore'; // Added getDocs here
 import { db } from '@/lib/firebase';
 import type { Collection, Link as LinkType, UserProfile } from '@/types';
 import Image from 'next/image';
@@ -26,8 +26,6 @@ export default function CollectionPage({ params: { id: collectionId } }: { param
   const [ownerProfile, setOwnerProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // const collectionId = params.id; // This line is removed as collectionId is now a direct prop
 
   const fetchCollectionAndLinks = useCallback(async () => {
     if (!collectionId) return;
@@ -84,39 +82,39 @@ export default function CollectionPage({ params: { id: collectionId } }: { param
   }, [fetchCollectionAndLinks]);
 
   const handleLinkAdded = (newLink: LinkType) => {
-    fetchCollectionAndLinks(); 
+    fetchCollectionAndLinks();
   };
 
   if (authLoading || loading) {
     return (
       <div className="space-y-8">
-        <Skeleton className="h-9 w-48 mb-6" /> 
+        <Skeleton className="h-9 w-48 mb-6" />
 
         <div className="border rounded-lg shadow-md overflow-hidden">
           <Skeleton className="w-full h-64 bg-muted flex items-center justify-center">
               <ImageOff className="w-16 h-16 text-gray-400" />
           </Skeleton>
           <div className="p-6 space-y-3">
-            <Skeleton className="h-10 w-3/4" /> 
-            <Skeleton className="h-4 w-1/4" /> 
-            <Skeleton className="h-5 w-full" /> 
-            <Skeleton className="h-5 w-2/3" /> 
+            <Skeleton className="h-10 w-3/4" />
+            <Skeleton className="h-4 w-1/4" />
+            <Skeleton className="h-5 w-full" />
+            <Skeleton className="h-5 w-2/3" />
           </div>
         </div>
-        
+
         <div className="border rounded-lg shadow-md">
           <div className="p-6 space-y-3">
-              <Skeleton className="h-8 w-1/3 mb-3" /> 
-              <Skeleton className="h-10 w-full mb-2" /> 
-              <Skeleton className="h-10 w-full mb-2" /> 
-              <Skeleton className="h-20 w-full mb-3" /> 
-              <Skeleton className="h-10 w-1/3" /> 
+              <Skeleton className="h-8 w-1/3 mb-3" />
+              <Skeleton className="h-10 w-full mb-2" />
+              <Skeleton className="h-10 w-full mb-2" />
+              <Skeleton className="h-20 w-full mb-3" />
+              <Skeleton className="h-10 w-1/3" />
           </div>
         </div>
 
 
         <section className="mt-10">
-          <Skeleton className="h-9 w-1/2 mb-6" /> 
+          <Skeleton className="h-9 w-1/2 mb-6" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[...Array(2)].map((_, i) => (
               <div key={i} className="border rounded-lg shadow-md p-4 space-y-2">
@@ -222,7 +220,7 @@ export default function CollectionPage({ params: { id: collectionId } }: { param
         </h2>
         {links.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {links.map(linkItem => ( // Renamed link to linkItem to avoid conflict with Link import
+            {links.map(linkItem => (
               <LinkCard key={linkItem.id} link={linkItem} />
             ))}
           </div>
