@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore'; // Added Timestamp
 import { db } from '@/lib/firebase';
 import { useAuthStatus } from '@/hooks/useAuthStatus';
 import { Button } from '@/components/ui/button';
@@ -84,7 +84,7 @@ const AddLinkForm: React.FC<AddLinkFormProps> = ({ collectionId, collectionOwner
       const createdLink: LinkType = {
         ...newLinkData,
         id: docRef.id,
-        createdAt: new Timestamp(Date.now() / 1000, 0) // Approximate client-side timestamp for immediate UI
+        createdAt: new Timestamp(Math.floor(Date.now() / 1000), 0) // Approximate client-side timestamp for immediate UI
       };
 
       onLinkAdded(createdLink); // Callback to update parent component's state
