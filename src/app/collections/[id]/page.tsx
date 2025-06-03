@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc, collection, query, where, /* orderBy, */ getDocs, serverTimestamp, addDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, orderBy, Timestamp, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Collection, Link as LinkType, UserProfile } from '@/types';
 import Image from 'next/image';
@@ -19,7 +19,7 @@ interface EnrichedLink extends LinkType {
   id: string;
 }
 
-export default function CollectionPage({ params }: { params: { id: string } }) {
+export default function CollectionPage({ params: { id: collectionId } }: { params: { id: string } }) {
   const { user, loading: authLoading } = useAuthStatus();
   const [collectionData, setCollectionData] = useState<Collection | null>(null);
   const [links, setLinks] = useState<EnrichedLink[]>([]);
@@ -27,7 +27,7 @@ export default function CollectionPage({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const collectionId = params.id;
+  // const collectionId = params.id; // This line is removed as collectionId is now a direct prop
 
   const fetchCollectionAndLinks = useCallback(async () => {
     if (!collectionId) return;
@@ -62,9 +62,7 @@ export default function CollectionPage({ params }: { params: { id: string } }) {
       const linksQuery = query(
         collection(db, 'links'),
         where('collectionId', '==', collectionId)
-        // Temporarily removed: orderBy('createdAt', 'desc') 
-        // This will allow links to load but they won't be sorted by date
-        // until the Firestore index (collectionId ASC, createdAt DESC) is enabled.
+        // orderBy('createdAt', 'desc') // Re-add this once index is confirmed
       );
       const linksSnapshot = await getDocs(linksQuery);
       const fetchedLinks = linksSnapshot.docs.map(docSnapshot => ({
@@ -224,8 +222,8 @@ export default function CollectionPage({ params }: { params: { id: string } }) {
         </h2>
         {links.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {links.map(link => (
-              <LinkCard key={link.id} link={link} />
+            {links.map(linkItem => ( // Renamed link to linkItem to avoid conflict with Link import
+              <LinkCard key={linkItem.id} link={linkItem} />
             ))}
           </div>
         ) : (
