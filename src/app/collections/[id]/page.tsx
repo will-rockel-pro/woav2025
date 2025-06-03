@@ -26,7 +26,7 @@ interface EnrichedLink extends LinkType {
 
 export default function CollectionPage() {
   const paramsHook = useParams();
-  const collectionIdFromParams = paramsHook.id as string; 
+  const collectionIdFromParams = paramsHook.id as string;
 
   const { user, loading: authLoading } = useAuthStatus();
   const [collectionData, setCollectionData] = useState<Collection | null>(null);
@@ -69,7 +69,7 @@ export default function CollectionPage() {
         collection(db, 'links'),
         where('collectionId', '==', collectionIdFromParams)
         // Temporarily removed orderBy to avoid index issues until explicitly requested
-        // orderBy('createdAt', 'desc') 
+        // orderBy('createdAt', 'desc')
       );
       const linksSnapshot = await getDocs(linksQuery);
       const fetchedLinks = linksSnapshot.docs.map(docSnapshot => ({
@@ -84,7 +84,7 @@ export default function CollectionPage() {
     } finally {
       setLoading(false);
     }
-  }, [collectionIdFromParams]); 
+  }, [collectionIdFromParams]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -95,25 +95,50 @@ export default function CollectionPage() {
   };
 
   const handleImageUpload = async () => {
-    if (!imageFile || !user) {
-      console.error("Image upload preconditions not met: Missing imageFile or user.", { imageFile, user });
-      toast({ title: 'Error', description: 'Cannot upload image. Missing file or user session.', variant: 'destructive'});
+    // --- Start of Added Debug Logging ---
+    console.log("[DEBUG] Attempting image upload. Current User (from useAuthStatus):", user);
+    console.log("[DEBUG] Current User UID (user?.uid):", user?.uid);
+    console.log("[DEBUG] Target Collection ID from params (collectionIdFromParams):", collectionIdFromParams);
+    console.log("[DEBUG] Image file selected (imageFile?.name):", imageFile?.name);
+
+    if (!user?.uid) {
+      console.error("[DEBUG] CRITICAL: User UID is missing or user object is null at point of upload attempt.");
+      toast({ title: 'Error', description: 'User session issue. Cannot upload. Please re-authenticate.', variant: 'destructive'});
       return;
     }
-
     if (!collectionIdFromParams) {
-        console.error("Collection ID from URL params is missing, cannot upload image.");
-        toast({ title: 'Error', description: 'Collection ID (from URL) is missing.', variant: 'destructive'});
-        return;
+      console.error("[DEBUG] CRITICAL: Collection ID from URL params is missing at point of upload attempt.");
+      toast({ title: 'Error', description: 'Collection ID context is missing. Cannot upload.', variant: 'destructive'});
+      return;
     }
-    
+    if (!imageFile) {
+      console.error("[DEBUG] CRITICAL: Image file is missing at point of upload attempt.");
+      toast({ title: 'Error', description: 'No image file selected. Cannot upload.', variant: 'destructive'});
+      return;
+    }
+    // --- End of Added Debug Logging ---
+
+
+    // Original preconditions check (now redundant due to above but kept for structure)
+    // if (!imageFile || !user || !user.uid) { // Added !user.uid check
+    //   console.error("Image upload preconditions not met: Missing imageFile or user or user.uid.", { imageFile, user });
+    //   toast({ title: 'Error', description: 'Cannot upload image. Missing file or user session details.', variant: 'destructive'});
+    //   return;
+    // }
+
+    // if (!collectionIdFromParams) {
+    //     console.error("Collection ID from URL params is missing, cannot upload image.");
+    //     toast({ title: 'Error', description: 'Collection ID (from URL) is missing.', variant: 'destructive'});
+    //     return;
+    // }
+
     const storagePath = `collection_images/${collectionIdFromParams}/${imageFile.name}`;
+    const collectionDocRefForUpdate = doc(db, 'collections', collectionIdFromParams);
 
-    console.log("Attempting image upload with the following details:");
-    console.log("Current User UID:", user.uid);
-    console.log("Target Collection ID (for storage path & Firestore doc):", collectionIdFromParams);
-    console.log("Storage Path:", storagePath);
-
+    // --- More Debug Logging ---
+    console.log("[DEBUG] Constructed Storage Path for upload:", storagePath);
+    console.log("[DEBUG] Constructed Firestore Document Path for update:", collectionDocRefForUpdate.path);
+    // ---
 
     setUploadingImage(true);
     try {
@@ -121,12 +146,15 @@ export default function CollectionPage() {
       const snapshot = await uploadBytes(storageRef, imageFile);
       const downloadURL = await getDownloadURL(snapshot.ref);
 
-      const collectionDocRef = doc(db, 'collections', collectionIdFromParams); 
-      
-      await updateDoc(collectionDocRef, {
+      console.log("[DEBUG] Image uploaded to Storage. Download URL:", downloadURL);
+      console.log("[DEBUG] Attempting to update Firestore document:", collectionDocRefForUpdate.path, "with image URL and new timestamp.");
+
+      await updateDoc(collectionDocRefForUpdate, {
         image: downloadURL,
-        updatedAt: serverTimestamp(), 
+        updatedAt: serverTimestamp(),
       });
+
+      console.log("[DEBUG] Firestore document updated successfully.");
 
       setCollectionData(prevData => {
         const baseData = prevData || { id: collectionIdFromParams, title: '', owner: user.uid, published: false, collaborators: [], createdAt: Timestamp.now() };
@@ -137,8 +165,10 @@ export default function CollectionPage() {
       toast({ title: 'Image uploaded successfully!' });
     } catch (err: any)
      {
-      console.error('Error uploading image:', err);
-      toast({ title: 'Error uploading image', description: err.message, variant: 'destructive' });
+      console.error('[DEBUG] Error during image upload or Firestore update:', err);
+      console.error('[DEBUG] Error code:', err.code); // Firebase errors often have a code
+      console.error('[DEBUG] Error message:', err.message);
+      toast({ title: 'Error uploading image', description: `Code: ${err.code || 'N/A'} | Message: ${err.message}`, variant: 'destructive' });
     } finally {
       setUploadingImage(false);
     }
@@ -155,7 +185,7 @@ export default function CollectionPage() {
   }, [collectionIdFromParams, fetchCollectionAndLinks]);
 
 
-  if (authLoading || (loading && !collectionData)) { 
+  if (authLoading || (loading && !collectionData)) {
     return (
       <div className="space-y-8">
         <Skeleton className="h-9 w-48 mb-6" />
@@ -289,8 +319,8 @@ export default function CollectionPage() {
           </CardContent>
         )}
       </Card>
-      
-      {isOwner && collectionData.id && collectionData.owner && ( 
+
+      {isOwner && collectionData.id && collectionData.owner && (
         <Card>
           <CardHeader>
             <CardTitle>Add New Link</CardTitle>
@@ -298,7 +328,7 @@ export default function CollectionPage() {
           <CardContent>
             <AddLinkForm
               collectionId={collectionData.id}
-              collectionOwnerId={collectionData.owner} 
+              collectionOwnerId={collectionData.owner}
               onLinkAdded={handleLinkAdded}
             />
           </CardContent>
