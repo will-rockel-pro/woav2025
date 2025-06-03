@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc, collection, query, where, orderBy, getDocs, serverTimestamp, addDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, /* orderBy, */ getDocs, serverTimestamp, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Collection, Link as LinkType, UserProfile } from '@/types';
 import Image from 'next/image';
@@ -61,8 +61,10 @@ export default function CollectionPage({ params }: { params: { id: string } }) {
       // Fetch links for this collection
       const linksQuery = query(
         collection(db, 'links'),
-        where('collectionId', '==', collectionId),
-        orderBy('createdAt', 'desc')
+        where('collectionId', '==', collectionId)
+        // Temporarily removed: orderBy('createdAt', 'desc') 
+        // This will allow links to load but they won't be sorted by date
+        // until the Firestore index (collectionId ASC, createdAt DESC) is enabled.
       );
       const linksSnapshot = await getDocs(linksQuery);
       const fetchedLinks = linksSnapshot.docs.map(docSnapshot => ({
@@ -84,38 +86,54 @@ export default function CollectionPage({ params }: { params: { id: string } }) {
   }, [fetchCollectionAndLinks]);
 
   const handleLinkAdded = (newLink: LinkType) => {
-    // Add the new link to the beginning of the list for immediate UI update
-    // Ensure it has an ID, even if temporary, or refetch.
-    // For simplicity, we'll cast it and rely on Firestore ID post-creation.
-    // A robust solution might involve re-fetching or getting the ID from addDoc.
-    setLinks(prevLinks => [{ ...newLink, id: String(Date.now()) } as EnrichedLink, ...prevLinks]);
-    // Or more accurately:
-    fetchCollectionAndLinks(); // Re-fetch to get the latest data including the new link with its Firestore ID
+    fetchCollectionAndLinks(); 
   };
 
   if (authLoading || loading) {
     return (
       <div className="space-y-8">
-        <Skeleton className="h-8 w-1/4" />
-        <Skeleton className="h-48 w-full rounded-lg" />
-        <Skeleton className="h-10 w-3/4" />
-        <Skeleton className="h-6 w-full" />
-        <Skeleton className="h-6 w-2/3" />
+        <Skeleton className="h-9 w-48 mb-6" /> 
+
+        <div className="border rounded-lg shadow-md overflow-hidden">
+          <Skeleton className="w-full h-64 bg-muted flex items-center justify-center">
+              <ImageOff className="w-16 h-16 text-gray-400" />
+          </Skeleton>
+          <div className="p-6 space-y-3">
+            <Skeleton className="h-10 w-3/4" /> 
+            <Skeleton className="h-4 w-1/4" /> 
+            <Skeleton className="h-5 w-full" /> 
+            <Skeleton className="h-5 w-2/3" /> 
+          </div>
+        </div>
         
-        <div className="mt-8 space-y-4">
-          <Skeleton className="h-8 w-1/3 mb-4" />
-          {[1, 2].map(i => (
-            <div key={i} className="border rounded-lg shadow-md p-4 space-y-2">
-              <div className="flex items-start space-x-3">
-                <Skeleton className="h-6 w-6 rounded mt-1" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-5 w-3/4" />
-                  <Skeleton className="h-3 w-full" />
+        <div className="border rounded-lg shadow-md">
+          <div className="p-6 space-y-3">
+              <Skeleton className="h-8 w-1/3 mb-3" /> 
+              <Skeleton className="h-10 w-full mb-2" /> 
+              <Skeleton className="h-10 w-full mb-2" /> 
+              <Skeleton className="h-20 w-full mb-3" /> 
+              <Skeleton className="h-10 w-1/3" /> 
+          </div>
+        </div>
+
+
+        <section className="mt-10">
+          <Skeleton className="h-9 w-1/2 mb-6" /> 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="border rounded-lg shadow-md p-4 space-y-2">
+                <div className="flex items-start space-x-3">
+                  <Skeleton className="h-6 w-6 rounded mt-1" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-2/3" />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </section>
       </div>
     );
   }
@@ -133,8 +151,6 @@ export default function CollectionPage({ params }: { params: { id: string } }) {
   }
 
   if (!collectionData) {
-    // This case should ideally be covered by the error state if not found,
-    // but as a fallback:
     return (
       <div className="text-center py-10">
         <Info className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
