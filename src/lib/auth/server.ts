@@ -27,6 +27,7 @@ export async function createSessionCookie(idToken: string): Promise<void> {
         path: '/',
         sameSite: 'lax' as const,
       };
+      // Use the Next.js cookies() utility to set the cookie
       cookies().set(options);
       console.log('[AuthServer] Session cookie created and set successfully.');
     } else {
@@ -42,18 +43,34 @@ export async function createSessionCookie(idToken: string): Promise<void> {
 
 export async function clearSessionCookie(): Promise<void> {
   console.log('[AuthServer] Clearing session cookie...');
+  // Use the Next.js cookies() utility to delete the cookie
   cookies().delete(SESSION_COOKIE_NAME);
   console.log('[AuthServer] Session cookie cleared.');
 }
 
 export async function getCurrentUser(): Promise<DecodedIdToken | null> {
   console.log('[AuthServer] Attempting to get current user from session cookie...');
-  const sessionCookieValue = cookies().get(SESSION_COOKIE_NAME)?.value;
+  let sessionCookieValue: string | undefined;
 
-  if (!sessionCookieValue) {
-    console.log('[AuthServer] No session cookie found.');
+  try {
+    // Directly get the cookie store and then the specific cookie.
+    // This pattern is standard for 'next/headers'.
+    const cookieStore = cookies();
+    const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME);
+    sessionCookieValue = sessionCookie?.value;
+  } catch (e: any) {
+    // This catch block is for errors during the act of trying to read cookies,
+    // which is less common than verification errors but good to have.
+    console.error('[AuthServer] Error accessing cookies from store:', e.message);
     return null;
   }
+  
+
+  if (!sessionCookieValue) {
+    console.log('[AuthServer] No session cookie found (value is missing).');
+    return null;
+  }
+  
   console.log('[AuthServer] Session cookie found. Value (first 10 chars):', sessionCookieValue.substring(0, 10) + '...');
 
   try {
@@ -65,7 +82,9 @@ export async function getCurrentUser(): Promise<DecodedIdToken | null> {
     console.error('[AuthServer] Error verifying session cookie:', error.message, error.code ? `(Code: ${error.code})` : '');
     // Session cookie is invalid or expired. Clear it.
     console.log('[AuthServer] Clearing invalid/expired session cookie due to verification error.');
-    await clearSessionCookie();
+    // No await needed here as clearSessionCookie itself will handle the async nature of cookies().delete()
+    // if it were to be made async, but cookies().delete() is synchronous.
+    cookies().delete(SESSION_COOKIE_NAME); // Directly clear
     return null;
   }
 }

@@ -21,10 +21,11 @@ interface EnrichedCollection extends CollectionType {
 
 async function fetchUserProfile(username: string): Promise<UserProfileType | null> {
   const usersRef = collection(db, 'users');
-  const q = query(usersRef, where('username', '==', username), limit(1));
+  // Ensure username is treated as a string for the query
+  const q = query(usersRef, where('username', '==', String(username)), limit(1));
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) {
-    console.warn(`[UserProfilePage] fetchUserProfile: No user found for username "${username}"`);
+    console.warn(`[UserProfilePage] fetchUserProfile: No user found for username "${String(username)}"`);
     return null;
   }
   return querySnapshot.docs[0].data() as UserProfileType;
@@ -80,12 +81,12 @@ async function fetchUserCollections(
 }
 
 
-export default async function UserProfilePage({ params }: ProfilePageProps) {
-  const username = params.username; // Extract username
+export default async function UserProfilePage({ params: { username } }: ProfilePageProps) {
+  // username is now directly available from destructured params
 
   // Initiate async data fetching in parallel
   const profileUserPromise = fetchUserProfile(username);
-  const currentUserPromise = getCurrentUser(); // Fetches currently logged-in user from session
+  const currentUserPromise = getCurrentUser(); 
 
   // Await all promises
   const [profileUser, currentUser] = await Promise.all([
@@ -93,7 +94,6 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
     currentUserPromise,
   ]);
 
-  // Log current user and profile user details for debugging
   console.log(`[UserProfilePage DEBUG] For profile @${username}:`);
   console.log(`  Current User UID from server: ${currentUser?.uid}`);
   console.log(`  Profile User (fetched for username '${username}') UID from DB: ${profileUser?.uuid}`);
@@ -111,7 +111,7 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
     );
   }
 
-  const isOwnProfile = currentUser?.uid === profileUser.uuid;
+  const isOwnProfile = !!currentUser && !!profileUser && currentUser.uid === profileUser.uuid;
   console.log(`  isOwnProfile evaluates to: ${isOwnProfile}`);
 
   const collections = await fetchUserCollections(profileUser.uuid, isOwnProfile);
@@ -121,7 +121,12 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
       <Card className="shadow-lg">
         <CardHeader className="items-center text-center p-6 sm:p-8">
           <Avatar className="h-24 w-24 sm:h-32 sm:w-32 mb-4 border-4 border-background shadow-md">
-            <AvatarImage src={profileUser.profile_picture ?? undefined} alt={profileUser.profile_name} data-ai-hint="user profile large" />
+            <AvatarImage 
+              src={profileUser.profile_picture ?? undefined} 
+              alt={profileUser.profile_name} 
+              priority  // Added priority for LCP
+              data-ai-hint="user profile large"
+            />
             <AvatarFallback className="text-4xl">
               {profileUser.profile_name ? profileUser.profile_name.charAt(0).toUpperCase() : <UserCircle />}
             </AvatarFallback>
