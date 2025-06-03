@@ -12,14 +12,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus } from "lucide-react"; // For the sign up link
+import { UserPlus } from "lucide-react";
+import { useRouter } from 'next/navigation';
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter(); // Import and use useRouter if not already
+  const router = useRouter();
   const { toast } = useToast();
 
   const handleEmailSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -27,9 +28,45 @@ export default function SignIn() {
     setError(null);
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({ title: "Signed In!", description: "Welcome back." });
-      router.push("/discover"); 
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      if (user) {
+        const idToken = await user.getIdToken(true);
+        console.log('[EmailSignIn] ID token obtained (first 10 chars):', idToken.substring(0,10) + '...');
+
+        console.log('[EmailSignIn] Calling /api/auth/session-login...');
+        const response = await fetch('/api/auth/session-login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ idToken }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('[EmailSignIn] API call to /api/auth/session-login FAILED. Status:', response.status, 'Error:', errorData.error);
+          // Present a user-friendly error, but still log details
+          toast({ title: "Session Creation Failed", description: errorData.error || "Could not establish a server session.", variant: "destructive" });
+          // Decide if you want to throw an error here or allow proceeding without server session
+          // For now, we'll log and show toast, but let the user proceed to client-side auth state.
+          // This might mean server-side features reliant on the cookie won't work immediately.
+        } else {
+          const responseData = await response.json();
+          console.log('[EmailSignIn] API call to /api/auth/session-login SUCCEEDED. Status:', response.status, 'Response Data:', responseData);
+          toast({ title: "Signed In!", description: "Welcome back. Server session established." });
+        }
+        
+        // Regardless of session cookie success, client-side auth is complete.
+        // router.refresh() is important to re-fetch server components with new cookie state
+        router.push("/discover");
+        router.refresh();
+      } else {
+        // This case should ideally not be reached if signInWithEmailAndPassword succeeds
+        throw new Error("User object not found after successful sign-in.");
+      }
+
     } catch (error: any) {
       setError(error.message);
       toast({ title: "Sign In Failed", description: error.message, variant: "destructive" });
@@ -113,6 +150,3 @@ export default function SignIn() {
     </div>
   );
 }
-
-// Need to import useRouter if you use router.push()
-import { useRouter } from 'next/navigation';
