@@ -2,7 +2,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc, collection, query, where, orderBy, Timestamp, addDoc, getDocs } from 'firebase/firestore'; // Added getDocs here
+import { useParams } from 'next/navigation'; // Import useParams
+import { doc, getDoc, collection, query, where, orderBy, Timestamp, addDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Collection, Link as LinkType, UserProfile } from '@/types';
 import Image from 'next/image';
@@ -19,7 +20,10 @@ interface EnrichedLink extends LinkType {
   id: string;
 }
 
-export default function CollectionPage({ params: { id: collectionId } }: { params: { id: string } }) {
+export default function CollectionPage() {
+  const paramsHook = useParams();
+  const collectionId = paramsHook.id as string; // Get id from useParams
+
   const { user, loading: authLoading } = useAuthStatus();
   const [collectionData, setCollectionData] = useState<Collection | null>(null);
   const [links, setLinks] = useState<EnrichedLink[]>([]);
@@ -60,7 +64,7 @@ export default function CollectionPage({ params: { id: collectionId } }: { param
       const linksQuery = query(
         collection(db, 'links'),
         where('collectionId', '==', collectionId)
-        // orderBy('createdAt', 'desc') // Re-add this once index is confirmed
+        // orderBy('createdAt', 'desc') // Re-add this once index is confirmed/created
       );
       const linksSnapshot = await getDocs(linksQuery);
       const fetchedLinks = linksSnapshot.docs.map(docSnapshot => ({
@@ -82,7 +86,7 @@ export default function CollectionPage({ params: { id: collectionId } }: { param
   }, [fetchCollectionAndLinks]);
 
   const handleLinkAdded = (newLink: LinkType) => {
-    fetchCollectionAndLinks();
+    fetchCollectionAndLinks(); // Refetch all links and collection data
   };
 
   if (authLoading || loading) {
@@ -234,3 +238,4 @@ export default function CollectionPage({ params: { id: collectionId } }: { param
     </div>
   );
 }
+
