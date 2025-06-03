@@ -58,6 +58,7 @@ export default function SignUpPage() {
           username: username,
           profile_name: user.email?.split('@')[0] || 'New User', // Default profile name
           profile_picture: null, // Use null instead of undefined for Firestore
+          bio: null, // Initialize bio as null
         };
         await setDoc(userRef, newUserProfile);
 

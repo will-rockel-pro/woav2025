@@ -1,3 +1,4 @@
+
 import type { Timestamp } from 'firebase/firestore';
 
 export interface UserProfile {
@@ -5,6 +6,7 @@ export interface UserProfile {
   username: string; // Globally unique, not email
   profile_name: string;
   profile_picture?: string; // Optional URL
+  bio?: string | null; // Optional, max 280 characters
 }
 
 export interface Collection {

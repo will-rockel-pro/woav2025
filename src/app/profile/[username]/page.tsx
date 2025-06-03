@@ -5,10 +5,12 @@ import type { UserProfile as UserProfileType, Collection as CollectionType } fro
 import CollectionCard from '@/components/CollectionCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { UserCircle, Library, Info } from 'lucide-react';
+import { UserCircle, Library, Info, Edit3 } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth/server';
 import ProfileImageUploader from '@/components/ProfileImageUploader';
-import { cookies } from 'next/headers'; // Import for forcing dynamic rendering
+import ProfileBioEditor from '@/components/ProfileBioEditor';
+import { cookies } from 'next/headers'; 
+import { Separator } from '@/components/ui/separator';
 
 interface ProfilePageProps {
   params: {
@@ -82,12 +84,12 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
 
   console.log(`[UserProfilePage DEBUG UserProfilePage] Rendering profile for username from params: "${username}"`);
 
-  // Fetch current user and profile user sequentially
   const currentUser = await getCurrentUser(cookieStore);
-  const profileUser = await fetchUserProfile(username);
-
   console.log(`[UserProfilePage DEBUG UserProfilePage] currentUser from getCurrentUser:`, currentUser ? { uid: currentUser.uid, email: currentUser.email } : null);
-  console.log(`[UserProfilePage DEBUG UserProfilePage] profileUser from fetchUserProfile("${username}"):`, profileUser ? { uuid: profileUser.uuid, username: profileUser.username } : null);
+  
+  const profileUser = await fetchUserProfile(username);
+  console.log(`[UserProfilePage DEBUG UserProfilePage] profileUser from fetchUserProfile("${username}"):`, profileUser ? { uuid: profileUser.uuid, username: profileUser.username, bio: profileUser.bio } : null);
+
 
   if (!profileUser) {
     return (
@@ -129,13 +131,21 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
           </Avatar>
           <CardTitle className="text-3xl sm:text-4xl font-headline">{profileUser.profile_name}</CardTitle>
           <CardDescription className="text-lg text-muted-foreground">@{profileUser.username}</CardDescription>
+          {profileUser.bio && (
+            <p className="text-sm text-muted-foreground mt-2 max-w-prose whitespace-pre-wrap">{profileUser.bio}</p>
+          )}
         </CardHeader>
         {isOwnProfile && (
-          <CardContent className="p-6 border-t">
+          <CardContent className="p-6 border-t space-y-6">
             <ProfileImageUploader
               userId={profileUser.uuid}
               currentImageUrl={profileUser.profile_picture}
               userName={profileUser.profile_name}
+            />
+            <Separator />
+            <ProfileBioEditor 
+              userId={profileUser.uuid}
+              currentBio={profileUser.bio || ""}
             />
           </CardContent>
         )}
@@ -164,4 +174,3 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
     </div>
   );
 }
-
