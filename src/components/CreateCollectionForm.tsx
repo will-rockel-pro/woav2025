@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, auth, storage } from '@/lib/firebase'; // Added storage
+import { db, auth, storage } from '@/lib/firebase';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,16 +60,16 @@ const CreateCollectionForm: React.FC = () => {
         collaborators: string[];
         createdAt: Timestamp;
         updatedAt: Timestamp;
-        image: string; // Initialize image as empty
+        image: string; 
       } = {
         title,
         description,
         owner: user.uid,
-        published: false,
+        published: false, 
         collaborators: [],
         createdAt: serverTimestamp() as Timestamp,
         updatedAt: serverTimestamp() as Timestamp,
-        image: '', // Initialize with empty image URL
+        image: '', 
       };
       
       const docRef = await addDoc(collection(db, 'collections'), collectionData);
@@ -85,7 +85,6 @@ const CreateCollectionForm: React.FC = () => {
         const storagePath = `collection_images/${collectionId}/${imageFile.name}`;
         const imageStorageRef = ref(storage, storagePath);
         
-        // Upload image
         const snapshot = await uploadBytes(imageStorageRef, imageFile);
         const downloadURL = await getDownloadURL(snapshot.ref);
         console.log('Image uploaded, URL: ', downloadURL);
@@ -103,12 +102,12 @@ const CreateCollectionForm: React.FC = () => {
         description: `Your new collection "${title}" has been created ${imageFile ? 'with an image' : ''}.`,
       });
       
-      // Reset form (optional, as we are redirecting)
       setTitle('');
       setDescription('');
       setImageFile(null);
       
-      router.push(`/collections/${collectionId}`); // Redirect to the new collection's page
+      // Redirect to the new collection's page
+      router.push(`/collections/${collectionId}`);
 
     } catch (err: any) {
       setError(err.message);
@@ -118,8 +117,6 @@ const CreateCollectionForm: React.FC = () => {
         variant: "destructive",
       });
       console.error('Error during collection creation process:', err);
-      // If collection was created but image upload failed, user will be on create page
-      // with an error. They can navigate to the partially created collection if needed.
     } finally {
       setLoading(false);
     }
