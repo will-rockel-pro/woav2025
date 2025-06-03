@@ -1,3 +1,4 @@
+
 'use client';
 
 import { signOut } from 'firebase/auth';
@@ -13,9 +14,23 @@ export default function SignOutButton() {
 
   const handleSignOut = async () => {
     try {
+      // Call the API route to clear the session cookie on the server
+      const response = await fetch('/api/auth/session-logout', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Server-side sign out failed:', errorData.error);
+        // Proceed with client-side sign out anyway, but log the server error
+      }
+
+      // Perform client-side sign out
       await signOut(auth);
+      
       toast({ title: 'Signed Out', description: "You have been successfully signed out."});
       router.push('/');
+      router.refresh(); // Important to refresh server components
     } catch (error: any) {
       console.error('Error signing out: ', error);
       toast({
