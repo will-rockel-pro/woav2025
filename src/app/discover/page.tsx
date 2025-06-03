@@ -8,7 +8,7 @@ import type { Collection, UserProfile } from '@/types';
 import CollectionCard from '@/components/CollectionCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Library } from 'lucide-react';
-import { useAuthStatus } from '@/hooks/useAuthStatus'; // Corrected import
+import { useAuthStatus } from '@/hooks/useAuthStatus';
 
 interface EnrichedCollection extends Collection {
   ownerDetails?: UserProfile;
@@ -16,23 +16,32 @@ interface EnrichedCollection extends Collection {
 
 export default function DiscoverPage() {
   const [collections, setCollections] = useState<EnrichedCollection[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Initialize loading to true
   const [error, setError] = useState<string | null>(null);
   const { user, loading: authLoading } = useAuthStatus();
 
   useEffect(() => {
     const fetchCollections = async () => {
-      if (!user) {
-        setLoading(false);
-        setCollections([]); // Clear collections if user is not available
+      // If auth is still loading, wait for it to complete.
+      if (authLoading) {
+        setLoading(true); // Keep loading true while auth is resolving
         return;
       }
+
+      // If auth is done, but there's no user or user.uid, they are not logged in.
+      if (!user || !user.uid) {
+        setCollections([]);
+        setLoading(false); // Not fetching, so not loading.
+        setError(null);    // Clear any previous error.
+        return;
+      }
+
       setLoading(true);
       setError(null);
       try {
         const collectionsQuery = query(
           collection(db, 'collections'),
-          where('owner', '==', user.uid), // Changed from 'userId' to 'owner'
+          where('owner', '==', user.uid),
           orderBy('createdAt', 'desc'),
           limit(20)
         );
@@ -42,26 +51,22 @@ export default function DiscoverPage() {
         for (const docSnapshot of querySnapshot.docs) {
           const colData = docSnapshot.data() as Omit<Collection, 'id' | 'createdAt' | 'updatedAt'> & { createdAt: Timestamp, updatedAt: Timestamp };
           let ownerDetails: UserProfile | undefined = undefined;
-          // Owner is the current user, so we can potentially use user's profile data if available
-          // or fetch it if we store more detailed profiles separately.
-          // For now, if colData.owner matches user.uid, we can assume some details.
-          if (colData.owner && colData.owner === user.uid) {
-             const userProfileDoc = await getDoc(doc(db, 'users', colData.owner));
-             if (userProfileDoc.exists()) {
-                 ownerDetails = userProfileDoc.data() as UserProfile;
+          
+          if (colData.owner) {
+             const userProfileDocRef = doc(db, 'users', colData.owner);
+             const userProfileDocSnap = await getDoc(userProfileDocRef);
+             if (userProfileDocSnap.exists()) {
+                 ownerDetails = userProfileDocSnap.data() as UserProfile;
+             } else {
+                console.warn(`Owner profile for UID ${colData.owner} not found during collection fetch.`);
              }
-          } else if (colData.owner) { // Fallback if owner might be different (e.g. shared collections later)
-            const ownerDoc = await getDoc(doc(db, 'users', colData.owner));
-            if (ownerDoc.exists()) {
-              ownerDetails = ownerDoc.data() as UserProfile;
-            }
           }
 
           fetchedCollections.push({ 
             ...colData, 
             id: docSnapshot.id, 
-            createdAt: colData.createdAt, // Keep as Timestamp
-            updatedAt: colData.updatedAt, // Keep as Timestamp
+            createdAt: colData.createdAt,
+            updatedAt: colData.updatedAt,
             ownerDetails 
           });
         }
@@ -74,22 +79,23 @@ export default function DiscoverPage() {
       }
     };
 
-    if (!authLoading) {
-      fetchCollections();
-    }
-  }, [user, authLoading]);
+    fetchCollections();
+  }, [user, authLoading, db]); // Added db as a dependency for completeness
 
-  if (loading || authLoading) {
+  // Combined loading state for initial auth check and data fetching
+  if (authLoading || loading) {
     return <DiscoverLoading />;
   }
 
   if (error) {
+    // This will display the "insufficient permissions" error from Firestore
     return <div className="text-center py-10 text-destructive">{error}</div>;
   }
   
   if (!user) {
+    // This state is hit if authLoading is false and user is null
     return (
-      <div className="text-center py-10">
+      <div className="flex flex-col items-center text-center py-10">
         <Library className="w-16 h-16 text-primary mb-4" />
         <h1 className="text-4xl font-bold font-headline mb-2">My Collections</h1>
         <p className="text-lg text-muted-foreground max-w-xl">
