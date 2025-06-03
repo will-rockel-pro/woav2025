@@ -1,15 +1,13 @@
 
-import { collection, query, where, getDocs, limit, orderBy, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase'; 
+import { collection, query, where, getDocs, limit, orderBy, Timestamp, doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import type { UserProfile as UserProfileType, Collection as CollectionType } from '@/types';
 import CollectionCard from '@/components/CollectionCard';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { UserCircle, Library, Info } from 'lucide-react';
-import { getCurrentUser } from '@/lib/auth/server'; 
-import ProfileImageUploader from '@/components/ProfileImageUploader'; // Import the new component
-import { doc, getDoc } from 'firebase/firestore';
-
+import { getCurrentUser } from '@/lib/auth/server';
+import ProfileImageUploader from '@/components/ProfileImageUploader';
 
 interface ProfilePageProps {
   params: {
@@ -31,12 +29,22 @@ async function fetchUserProfile(username: string): Promise<UserProfileType | nul
   return querySnapshot.docs[0].data() as UserProfileType;
 }
 
+async function fetchUserProfileByUuid(uuid: string): Promise<UserProfileType | null> {
+    const userDocRef = doc(db, 'users', uuid);
+    const userDocSnap = await getDoc(userDocRef);
+    if (userDocSnap.exists()) {
+        return userDocSnap.data() as UserProfileType;
+    }
+    return null;
+}
+
 async function fetchUserCollections(
   userId: string,
   isOwnProfile: boolean
 ): Promise<EnrichedCollection[]> {
   const collectionsRef = collection(db, 'collections');
   let q;
+  const profileOwner = await fetchUserProfileByUuid(userId); // Fetch the owner's profile once
 
   if (isOwnProfile) {
     q = query(collectionsRef, where('owner', '==', userId), orderBy('createdAt', 'desc'));
@@ -51,34 +59,24 @@ async function fetchUserCollections(
 
   const querySnapshot = await getDocs(q);
   
-  const profileUser = await fetchUserProfileByUuid(userId); // Fetch the profile user once
-
   const collections = querySnapshot.docs.map(docSnapshot => {
-    const colData = docSnapshot.data() as Omit<CollectionType, 'id'>; // Ensure Timestamps are handled if they are objects
+    const colData = docSnapshot.data() as Omit<CollectionType, 'id'>;
     return {
       id: docSnapshot.id,
       ...colData,
-      createdAt: colData.createdAt as Timestamp, // Cast if necessary, depending on Firestore SDK version/setup
-      updatedAt: colData.updatedAt as Timestamp, // Cast if necessary
-      ownerDetails: profileUser || undefined // Use the pre-fetched profileUser
+      createdAt: colData.createdAt as Timestamp,
+      updatedAt: colData.updatedAt as Timestamp,
+      ownerDetails: profileOwner || undefined // Use the pre-fetched profileOwner for all collections by this user
     } as EnrichedCollection;
   });
   return collections;
 }
 
-async function fetchUserProfileByUuid(uuid: string): Promise<UserProfileType | null> {
-    const userDocRef = doc(db, 'users', uuid);
-    const userDocSnap = await getDoc(userDocRef);
-    if (userDocSnap.exists()) {
-        return userDocSnap.data() as UserProfileType;
-    }
-    return null;
-}
 
 export default async function UserProfilePage({ params }: ProfilePageProps) {
   const { username } = params;
   const profileUser = await fetchUserProfile(username);
-  const currentUser = await getCurrentUser(); 
+  const currentUser = await getCurrentUser();
 
   if (!profileUser) {
     return (
@@ -110,8 +108,8 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
         </CardHeader>
         {isOwnProfile && (
           <CardContent className="p-6 border-t">
-            <ProfileImageUploader 
-              userId={profileUser.uuid} 
+            <ProfileImageUploader
+              userId={profileUser.uuid}
               currentImageUrl={profileUser.profile_picture}
               userName={profileUser.profile_name}
             />
