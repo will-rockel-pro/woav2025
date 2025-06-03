@@ -28,11 +28,7 @@ export default function CollectionCard({ collection, owner }: CollectionCardProp
         </Link>
       </CardHeader>
       <CardContent className="p-4 flex-grow">
-        {collection.published ? (
-          <Badge variant="default" className="mb-2 inline-flex items-center">
-            <Eye className="mr-1.5 h-3.5 w-3.5" /> Public
-          </Badge>
-        ) : (
+        {!collection.published && (
           <Badge variant="secondary" className="mb-2 inline-flex items-center">
             <EyeOff className="mr-1.5 h-3.5 w-3.5" /> Private
           </Badge>
