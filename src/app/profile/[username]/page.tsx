@@ -2,14 +2,17 @@
 'use server';
 
 import { collection, query, where, getDocs, limit, orderBy, Timestamp } from 'firebase/firestore';
-import { adminDb } from '@/lib/firebaseAdmin';
+import { adminDb } from '@/lib/firebaseAdmin'; // Ensure this path is correct
 import type { UserProfile as UserProfileType, Collection as CollectionType } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { UserCircle, Library, Info } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth/server';
 import { cookies } from 'next/headers';
-import UserProfileCollections from '@/components/UserProfileCollections'; // New client component
+import UserProfileCollections from '@/components/UserProfileCollections';
+// import ProfileImageUploader from '@/components/ProfileImageUploader';
+// import ProfileBioEditor from '@/components/ProfileBioEditor';
+
 
 interface ProfilePageProps {
   params: {
@@ -17,17 +20,16 @@ interface ProfilePageProps {
   };
 }
 
-interface EnrichedCollection extends CollectionType {
-  ownerDetails?: UserProfileType;
-}
-
 async function fetchUserProfile(username: string): Promise<UserProfileType | null> {
-  console.log(`[UserProfilePage fetchUserProfile] Attempting to fetch profile for username: "${username}" using adminDb`);
+  console.log(`[UserProfilePage fetchUserProfile] Attempting to fetch profile for username: "${username}"`);
+
+  // Critical check for adminDb before use
+  if (!adminDb || typeof adminDb.collection !== 'function') {
+    console.error(`[UserProfilePage fetchUserProfile] adminDb is not available or not a valid Firestore instance for username "${username}". Check firebaseAdmin.ts initialization and the FIREBASE_SERVICE_ACCOUNT_KEY_JSON environment variable.`);
+    return null; // Prevent further execution and crash
+  }
+
   try {
-    if (!adminDb) {
-      console.error('[UserProfilePage fetchUserProfile] adminDb is not available. Firebase Admin SDK might not be initialized.');
-      throw new Error('Server configuration error: Firebase Admin SDK not available.');
-    }
     const usersRef = collection(adminDb, 'users');
     const q = query(usersRef, where('username', '==', username), limit(1));
     const querySnapshot = await getDocs(q);
@@ -37,7 +39,14 @@ async function fetchUserProfile(username: string): Promise<UserProfileType | nul
       return null;
     }
     const userDoc = querySnapshot.docs[0];
-    const userProfileData = { uuid: userDoc.id, ...userDoc.data() } as UserProfileType;
+    // Ensure all fields are correctly typed, especially if some are optional
+    const userProfileData = {
+        uuid: userDoc.id,
+        username: userDoc.data().username,
+        profile_name: userDoc.data().profile_name,
+        profile_picture: userDoc.data().profile_picture || null, // Default to null if undefined
+        bio: userDoc.data().bio || null, // Default to null if undefined
+    } as UserProfileType;
     console.log(`[UserProfilePage fetchUserProfile] Found profile for "${username}": UUID ${userProfileData.uuid}`);
     return userProfileData;
   } catch (error: any) {
@@ -48,7 +57,7 @@ async function fetchUserProfile(username: string): Promise<UserProfileType | nul
 }
 
 export default async function UserProfilePage({ params }: ProfilePageProps) {
-  const cookieStore = cookies(); // Ensures page is dynamically rendered
+  const cookieStore = cookies();
   const { username } = params;
   console.log(`[UserProfilePage] Rendering profile for username from params: "${username}"`);
 
@@ -61,14 +70,15 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
         <UserCircle className="w-24 h-24 text-muted-foreground mb-6" />
         <h1 className="text-3xl font-bold mb-2">User Not Found</h1>
         <p className="text-lg text-muted-foreground">
-          The profile for "@{username}" could not be found.
+          The profile for "@{username}" could not be found. This might be due to a server error or the user not existing.
         </p>
+         <p className="text-sm text-muted-foreground mt-2">Please check the server logs for more details if this issue persists.</p>
       </div>
     );
   }
 
   const isOwnProfile = !!(currentUser && currentUser.uid === profileUser.uuid);
-  console.log(`[UserProfilePage] isOwnProfile determined as: ${isOwnProfile} (currentUser UID: ${currentUser?.uid}, profileUser UUID: ${profileUser.uuid})`);
+  // console.log(`[UserProfilePage] isOwnProfile determined as: ${isOwnProfile} (currentUser UID: ${currentUser?.uid}, profileUser UUID: ${profileUser.uuid})`);
 
   return (
     <div className="space-y-10">
@@ -87,10 +97,15 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
           <CardTitle className="text-3xl sm:text-4xl font-headline">{profileUser.profile_name}</CardTitle>
           <CardDescription className="text-lg text-muted-foreground">@{profileUser.username}</CardDescription>
           {profileUser.bio && (
-            <p className="text-sm text-muted-foreground mt-2 max-w-prose whitespace-pre-wrap">{profileUser.bio || "No bio yet."}</p>
+            <p className="text-sm text-muted-foreground mt-2 max-w-prose whitespace-pre-wrap">{profileUser.bio}</p>
           )}
         </CardHeader>
-        {/* Placeholder for ProfileImageUploader and ProfileBioEditor - will be re-added later if isOwnProfile is true */}
+        {/* {isOwnProfile && (
+          <CardContent className="border-t pt-6 space-y-6">
+            <ProfileImageUploader userId={profileUser.uuid} currentImageUrl={profileUser.profile_picture} userName={profileUser.profile_name} />
+            <ProfileBioEditor userId={profileUser.uuid} currentBio={profileUser.bio || ''} />
+          </CardContent>
+        )} */}
       </Card>
 
       <section>
