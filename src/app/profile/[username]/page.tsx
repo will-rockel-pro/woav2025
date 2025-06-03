@@ -1,68 +1,109 @@
 
-'use server';
+'use client';
 
-import { cookies } from 'next/headers';
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import { doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { db } from '@/lib/firebase'; // Use client-side db
 import type { UserProfile as UserProfileType } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { UserCircle, Library, Info } from 'lucide-react';
-import { getCurrentUser } from '@/lib/auth/server';
 import UserProfileCollections from '@/components/UserProfileCollections';
-import { adminDb } from '@/lib/firebaseAdmin'; // We still need this for a simple user fetch
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { useAuthStatus } from '@/hooks/useAuthStatus'; // For client-side auth check
+import { Skeleton } from '@/components/ui/skeleton';
 
+export default function UserProfilePage() {
+  const params = useParams();
+  const username = params.username as string;
 
-interface ProfilePageProps {
-  params: {
-    username: string;
-  };
-}
+  const { user: currentUser, loading: authLoading } = useAuthStatus();
+  const [profileUser, setProfileUser] = useState<UserProfileType | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-// Simplified server-side fetch for basic user details.
-async function fetchBasicUserProfile(username: string): Promise<UserProfileType | null> {
-  console.log(`[UserProfilePage fetchBasicUserProfile] Attempting to fetch profile for username: "${username}"`);
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      if (!username) {
+        setError("Username not found in URL.");
+        setLoadingProfile(false);
+        return;
+      }
+      console.log(`[UserProfilePage Client] Attempting to fetch profile for username: "${username}"`);
+      setLoadingProfile(true);
+      setError(null);
+      try {
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('username', '==', username), limit(1));
+        const querySnapshot = await getDocs(q);
 
-  if (!adminDb || typeof adminDb.collection !== 'function') {
-    console.error(`[UserProfilePage fetchBasicUserProfile] adminDb is not available or not a valid Firestore instance for username "${username}". Check firebaseAdmin.ts initialization and the FIREBASE_SERVICE_ACCOUNT_KEY_JSON environment variable.`);
-    return null;
-  }
+        if (querySnapshot.empty) {
+          console.warn(`[UserProfilePage Client] No profile found for username: "${username}"`);
+          setProfileUser(null);
+          setError("User not found.");
+        } else {
+          const userDoc = querySnapshot.docs[0];
+          const userProfileData = {
+            uuid: userDoc.id,
+            ...userDoc.data()
+          } as UserProfileType;
+          setProfileUser(userProfileData);
+          console.log(`[UserProfilePage Client] Found profile for "${username}": UUID ${userProfileData.uuid}`);
+        }
+      } catch (err: any) {
+        console.error(`[UserProfilePage Client] Error fetching profile for ${username}:`, err);
+        setError(err.message || "Failed to load profile.");
+        setProfileUser(null);
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
 
-  try {
-    const usersRef = collection(adminDb, 'users');
-    const q = query(usersRef, where('username', '==', username), limit(1));
-    const querySnapshot = await getDocs(q);
+    fetchProfileData();
+  }, [username]);
 
-    if (querySnapshot.empty) {
-      console.warn(`[UserProfilePage fetchBasicUserProfile] No profile found for username: "${username}"`);
-      return null;
-    }
-    const userDoc = querySnapshot.docs[0];
-    const userProfileData = {
-        uuid: userDoc.id, // Use document ID as uuid if not stored in field
-        username: userDoc.data().username,
-        profile_name: userDoc.data().profile_name,
-        profile_picture: userDoc.data().profile_picture || null,
-        // bio: userDoc.data().bio || null, // Bio removed for now
-    } as UserProfileType;
-    console.log(`[UserProfilePage fetchBasicUserProfile] Found profile for "${username}": UUID ${userProfileData.uuid}`);
-    return userProfileData;
-  } catch (error: any) {
-    console.error(`[UserProfilePage fetchBasicUserProfile] Error using adminDb for ${username}:`, error.message, error.code, error.stack);
-    // Do not re-throw here to allow page to render with a "not found" state
-    return null;
-  }
-}
-
-export default async function UserProfilePage({ params }: ProfilePageProps) {
-  const cookieStore = cookies();
-  const { username } = params;
-  console.log(`[UserProfilePage] Rendering profile for username from params: "${username}"`);
-
-  const currentUser = await getCurrentUser(cookieStore); // Still useful for isOwnProfile
-  const profileUser = await fetchBasicUserProfile(username);
-
-  if (!profileUser) {
+  if (authLoading || loadingProfile) {
     return (
+      <div className="space-y-10">
+        <Card className="shadow-lg">
+          <CardHeader className="items-center text-center p-6 sm:p-8">
+            <Skeleton className="h-24 w-24 sm:h-32 sm:w-32 rounded-full mb-4" />
+            <Skeleton className="h-10 w-3/4 max-w-xs mb-2" />
+            <Skeleton className="h-6 w-1/2 max-w-xxs" />
+          </CardHeader>
+        </Card>
+        <section>
+          <div className="flex items-center mb-6">
+            <Skeleton className="h-8 w-8 mr-3 rounded" />
+            <Skeleton className="h-9 w-1/2 md:w-1/3" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="border rounded-lg shadow-md p-4 space-y-3">
+                <Skeleton className="h-40 w-full rounded-md" />
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-9 w-full mt-2" />
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  if (error && !profileUser) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center py-12">
+        <UserCircle className="w-24 h-24 text-muted-foreground mb-6" />
+        <h1 className="text-3xl font-bold mb-2">Error Loading Profile</h1>
+        <p className="text-lg text-muted-foreground">{error}</p>
+      </div>
+    );
+  }
+  
+  if (!profileUser) {
+     return (
       <div className="flex flex-col items-center justify-center text-center py-12">
         <UserCircle className="w-24 h-24 text-muted-foreground mb-6" />
         <h1 className="text-3xl font-bold mb-2">User Not Found</h1>
@@ -91,9 +132,8 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
           </Avatar>
           <CardTitle className="text-3xl sm:text-4xl font-headline">{profileUser.profile_name}</CardTitle>
           <CardDescription className="text-lg text-muted-foreground">@{profileUser.username}</CardDescription>
-          {/* Bio display removed for now */}
         </CardHeader>
-        {/* ProfileImageUploader and ProfileBioEditor removed for now */}
+        {/* ProfileImageUploader and ProfileBioEditor would be conditionally rendered here if isOwnProfile is true, once re-added */}
       </Card>
 
       <section>
@@ -101,7 +141,6 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
           <Library className="mr-3 h-8 w-8 text-primary" />
           {isOwnProfile ? "My Collections" : `Collections by ${profileUser.profile_name}`}
         </h2>
-        {/* UserProfileCollections will handle fetching and display on the client */}
         <UserProfileCollections userId={profileUser.uuid} isOwnProfileView={isOwnProfile} profileOwnerName={profileUser.profile_name} />
       </section>
     </div>
