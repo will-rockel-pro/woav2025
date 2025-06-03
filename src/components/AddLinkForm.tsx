@@ -36,7 +36,6 @@ const AddLinkForm: React.FC<AddLinkFormProps> = ({ collectionId, collectionOwner
   const [otherUserCollections, setOtherUserCollections] = useState<Collection[]>([]);
   const [loadingOtherCollections, setLoadingOtherCollections] = useState(true);
   const [selectedAdditionalCollectionIds, setSelectedAdditionalCollectionIds] = useState<Set<string>>(new Set());
-  const [newCollectionTitle, setNewCollectionTitle] = useState('');
   const [multiSelectOpen, setMultiSelectOpen] = useState(false);
 
   const { user, loading: authLoading } = useAuthStatus();
@@ -91,14 +90,11 @@ const AddLinkForm: React.FC<AddLinkFormProps> = ({ collectionId, collectionOwner
       toast({ title: "Authentication Error", description: "Please sign in.", variant: "destructive" });
       return;
     }
-    // The parent component CollectionPage already verifies ownership for displaying the form.
-    // This is an additional safeguard if this component were used elsewhere.
     if (user.uid !== collectionOwnerId) {
         setFormError('You are not the owner of this collection.');
         toast({ title: "Permission Denied", description: "You do not have permission to add links here.", variant: "destructive" });
         return;
     }
-
 
     setSubmitting(true);
     const linkTitle = title.trim() || url;
@@ -108,13 +104,14 @@ const AddLinkForm: React.FC<AddLinkFormProps> = ({ collectionId, collectionOwner
     let createdLinkForCurrentPage: LinkType | null = null;
 
     try {
+      // Fetch current collection's name for the toast message
+      let currentCollectionName = "Current Collection";
+      const currentCollectionDocSnap = await getDoc(doc(db, 'collections', collectionId));
+      if (currentCollectionDocSnap.exists()) {
+        currentCollectionName = currentCollectionDocSnap.data()?.title || "Current Collection";
+      }
+
       // 1. Add to the current collection
-      const currentCollectionDoc = otherUserCollections.find(c => c.id === collectionId) || 
-                                   (await getDocs(query(collection(db, 'collections'), where('__name__', '==', collectionId)))).docs[0]?.data() as Collection | undefined;
-      
-      const currentCollectionName = currentCollectionDoc?.title || "Current Collection";
-
-
       const newLinkDataCurrent: Omit<LinkType, 'id'> = {
         collectionId,
         url,
@@ -143,30 +140,6 @@ const AddLinkForm: React.FC<AddLinkFormProps> = ({ collectionId, collectionOwner
         if (col) allAddedToCollectionsNames.push(col.title);
       }
 
-      // 3. Create new collection and add link if title provided
-      if (newCollectionTitle.trim()) {
-        const newColName = newCollectionTitle.trim();
-        const newCollectionRef = await addDoc(collection(db, 'collections'), {
-          title: newColName,
-          description: '',
-          owner: user.uid,
-          published: false,
-          collaborators: [],
-          createdAt: serverTimestamp() as Timestamp,
-          updatedAt: serverTimestamp() as Timestamp,
-          image: '',
-        });
-        const newLinkDataForNewCol: Omit<LinkType, 'id'> = {
-          collectionId: newCollectionRef.id,
-          url, title: linkTitle, description: linkDescription, favicon,
-          createdAt: serverTimestamp() as Timestamp,
-          addedBy: user.uid,
-        };
-        await addDoc(collection(db, 'links'), newLinkDataForNewCol);
-        allAddedToCollectionsNames.push(newColName);
-        toast({ title: 'Collection Created', description: `Collection "${newColName}" created.` });
-      }
-
       const successMsg = `Link added to: ${allAddedToCollectionsNames.join(', ')}.`;
       setFormSuccess(successMsg);
       toast({ title: 'Link Added!', description: successMsg });
@@ -176,7 +149,6 @@ const AddLinkForm: React.FC<AddLinkFormProps> = ({ collectionId, collectionOwner
       setTitle('');
       setDescription('');
       setSelectedAdditionalCollectionIds(new Set());
-      setNewCollectionTitle('');
 
     } catch (err: any) {
       console.error('Error adding link(s):', err);
@@ -206,7 +178,6 @@ const AddLinkForm: React.FC<AddLinkFormProps> = ({ collectionId, collectionOwner
       <AlertDescription>Only the collection owner can add links to this collection.</AlertDescription>
     </Alert>
   );
-
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -238,86 +209,62 @@ const AddLinkForm: React.FC<AddLinkFormProps> = ({ collectionId, collectionOwner
         <Textarea id="link-description-local" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="A short summary of the link." />
       </div>
 
-      <Separator className="my-6" />
-
-      <div className="space-y-4">
-        <h3 className="text-md font-medium text-muted-foreground">Optionally, also add to:</h3>
-        
-        <div className="space-y-2">
-          <Label htmlFor="additionalCollections">Other existing collection(s)</Label>
-          {loadingOtherCollections ? <p className="text-sm text-muted-foreground">Loading other collections...</p> : (
-            otherUserCollections.length > 0 ? (
-              <Popover open={multiSelectOpen} onOpenChange={setMultiSelectOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" role="combobox" aria-expanded={multiSelectOpen} className="w-full justify-between font-normal">
-                    {selectedAdditionalCollectionIds.size > 0 ? `${selectedAdditionalCollectionIds.size} other collection(s) selected` : "Select other collections..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                  <Command>
-                    <CommandInput placeholder="Search collections..." />
-                    <CommandList>
-                      <CommandEmpty>No other collections found.</CommandEmpty>
-                      <CommandGroup>
-                        <ScrollArea className="h-48">
-                          {otherUserCollections.map(col => (
-                            <CommandItem
-                              key={col.id}
-                              value={col.title}
-                              onSelect={() => {
-                                setSelectedAdditionalCollectionIds(prev => {
-                                  const newSet = new Set(prev);
-                                  if (newSet.has(col.id)) newSet.delete(col.id);
-                                  else newSet.add(col.id);
-                                  return newSet;
-                                });
-                              }}
-                              className="cursor-pointer"
-                            >
-                              <Checkbox checked={selectedAdditionalCollectionIds.has(col.id)} className="mr-2" />
-                              {col.title}
-                            </CommandItem>
-                          ))}
-                        </ScrollArea>
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            ) : (
-              <p className="text-sm text-muted-foreground">You don't have any other collections.</p>
-            )
-          )}
-        </div>
-
-        <div className="flex items-center space-x-2">
-            <Separator className="flex-grow" />
-            <span className="text-xs text-muted-foreground">OR</span>
-            <Separator className="flex-grow" />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="newCollectionTitle-local">Create a new collection named:</Label>
-          <Input 
-            id="newCollectionTitle-local" 
-            placeholder="e.g., My New Finds" 
-            value={newCollectionTitle}
-            onChange={(e) => setNewCollectionTitle(e.target.value)}
-            disabled={selectedAdditionalCollectionIds.size > 0 && !newCollectionTitle.trim()} 
-          />
-           {selectedAdditionalCollectionIds.size > 0 && newCollectionTitle.trim() && (
-             <p className="text-xs text-destructive">Note: Adding to existing collections will take precedence over creating a new one if both are specified.</p>
-           )}
-        </div>
-      </div>
+      {otherUserCollections.length > 0 && (
+        <>
+          <Separator className="my-6" />
+          <div className="space-y-4">
+            <h3 className="text-md font-medium text-muted-foreground">Optionally, also add to other existing collection(s):</h3>
+            <div className="space-y-2">
+              {loadingOtherCollections ? <p className="text-sm text-muted-foreground">Loading other collections...</p> : (
+                <Popover open={multiSelectOpen} onOpenChange={setMultiSelectOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={multiSelectOpen} className="w-full justify-between font-normal">
+                      {selectedAdditionalCollectionIds.size > 0 ? `${selectedAdditionalCollectionIds.size} other collection(s) selected` : "Select other collections..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search collections..." />
+                      <CommandList>
+                        <CommandEmpty>No other collections found to select.</CommandEmpty>
+                        <CommandGroup>
+                          <ScrollArea className="h-48">
+                            {otherUserCollections.map(col => (
+                              <CommandItem
+                                key={col.id}
+                                value={col.title}
+                                onSelect={() => {
+                                  setSelectedAdditionalCollectionIds(prev => {
+                                    const newSet = new Set(prev);
+                                    if (newSet.has(col.id)) newSet.delete(col.id);
+                                    else newSet.add(col.id);
+                                    return newSet;
+                                  });
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <Checkbox checked={selectedAdditionalCollectionIds.has(col.id)} className="mr-2" />
+                                {col.title}
+                              </CommandItem>
+                            ))}
+                          </ScrollArea>
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
+          </div>
+        </>
+      )}
       
       <Button type="submit" disabled={submitting || !url.trim()} className="w-full sm:w-auto">
-        {submitting ? 'Adding Link(s)...' : 'Add Link to Collection(s)'}
+        {submitting ? 'Adding Link(s)...' : 'Add Link'}
       </Button>
     </form>
   );
 };
 
 export default AddLinkForm;
-
