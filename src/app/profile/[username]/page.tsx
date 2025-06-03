@@ -24,6 +24,7 @@ async function fetchUserProfile(username: string): Promise<UserProfileType | nul
   const q = query(usersRef, where('username', '==', username), limit(1));
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) {
+    console.warn(`[UserProfilePage] fetchUserProfile: No user found for username "${username}"`);
     return null;
   }
   return querySnapshot.docs[0].data() as UserProfileType;
@@ -35,18 +36,24 @@ async function fetchUserProfileByUuid(uuid: string): Promise<UserProfileType | n
     if (userDocSnap.exists()) {
         return userDocSnap.data() as UserProfileType;
     }
+    console.warn(`[UserProfilePage] fetchUserProfileByUuid: No user found for UUID "${uuid}"`);
     return null;
 }
 
 async function fetchUserCollections(
   userId: string,
-  isOwnProfile: boolean
+  isOwnProfileView: boolean
 ): Promise<EnrichedCollection[]> {
+  if (!userId) {
+    console.warn("[UserProfilePage] fetchUserCollections: userId is undefined, cannot fetch collections.");
+    return [];
+  }
   const collectionsRef = collection(db, 'collections');
   let q;
-  const profileOwner = await fetchUserProfileByUuid(userId); // Fetch the owner's profile once
 
-  if (isOwnProfile) {
+  const profileOwnerForCollections = await fetchUserProfileByUuid(userId);
+
+  if (isOwnProfileView) {
     q = query(collectionsRef, where('owner', '==', userId), orderBy('createdAt', 'desc'));
   } else {
     q = query(
@@ -66,7 +73,7 @@ async function fetchUserCollections(
       ...colData,
       createdAt: colData.createdAt as Timestamp,
       updatedAt: colData.updatedAt as Timestamp,
-      ownerDetails: profileOwner || undefined // Use the pre-fetched profileOwner for all collections by this user
+      ownerDetails: profileOwnerForCollections || undefined
     } as EnrichedCollection;
   });
   return collections;
@@ -74,14 +81,22 @@ async function fetchUserCollections(
 
 
 export default async function UserProfilePage({ params }: ProfilePageProps) {
-  const { username } = params;
-  const profileUser = await fetchUserProfile(username);
-  const currentUser = await getCurrentUser();
+  const username = params.username; // Extract username
 
-  // DEBUGGING LOG: Check these values in your server terminal
+  // Initiate async data fetching in parallel
+  const profileUserPromise = fetchUserProfile(username);
+  const currentUserPromise = getCurrentUser(); // Fetches currently logged-in user from session
+
+  // Await all promises
+  const [profileUser, currentUser] = await Promise.all([
+    profileUserPromise,
+    currentUserPromise,
+  ]);
+
+  // Log current user and profile user details for debugging
   console.log(`[UserProfilePage DEBUG] For profile @${username}:`);
   console.log(`  Current User UID from server: ${currentUser?.uid}`);
-  console.log(`  Profile User UID from DB: ${profileUser?.uuid}`);
+  console.log(`  Profile User (fetched for username '${username}') UID from DB: ${profileUser?.uuid}`);
   
 
   if (!profileUser) {
