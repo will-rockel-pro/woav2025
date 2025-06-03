@@ -78,6 +78,12 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
   const profileUser = await fetchUserProfile(username);
   const currentUser = await getCurrentUser();
 
+  // DEBUGGING LOG: Check these values in your server terminal
+  console.log(`[UserProfilePage DEBUG] For profile @${username}:`);
+  console.log(`  Current User UID from server: ${currentUser?.uid}`);
+  console.log(`  Profile User UID from DB: ${profileUser?.uuid}`);
+  
+
   if (!profileUser) {
     return (
       <div className="flex flex-col items-center justify-center text-center py-12">
@@ -91,6 +97,8 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
   }
 
   const isOwnProfile = currentUser?.uid === profileUser.uuid;
+  console.log(`  isOwnProfile evaluates to: ${isOwnProfile}`);
+
   const collections = await fetchUserCollections(profileUser.uuid, isOwnProfile);
 
   return (
