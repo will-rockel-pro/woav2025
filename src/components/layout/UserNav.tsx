@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -14,7 +15,7 @@ import {
 import SignOutButton from '@/components/auth/SignOutButton';
 import { useAuthStatus } from '@/hooks/useAuthStatus';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserCircle, LogIn } from 'lucide-react';
+import { UserCircle, LogIn, PlusCircle } from 'lucide-react';
 
 export default function UserNav() {
   const { user, loading } = useAuthStatus();
@@ -55,13 +56,18 @@ export default function UserNav() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/create-collection" className="w-full justify-start flex items-center">
+            <PlusCircle className="mr-2 h-4 w-4" /> Create New Collection
+          </Link>
+        </DropdownMenuItem>
         {/* <DropdownMenuItem asChild>
           <Link href="/profile/me">Profile</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/settings">Settings</Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator /> */}
+        </DropdownMenuItem> */}
+        <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <SignOutButton />
         </DropdownMenuItem>
