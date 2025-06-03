@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, doc, getDoc, limit, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, limit, orderBy, Timestamp, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Collection, UserProfile } from '@/types';
 import CollectionCard from '@/components/CollectionCard';
@@ -21,7 +21,7 @@ export default function DiscoverPage() {
   const { user, loading: authLoading } = useAuthStatus();
 
   useEffect(() => {
-    const fetchCollections = async () => {
+    const fetchCollectionsAndProfile = async () => {
       if (authLoading) {
         setLoading(true); 
         return;
@@ -37,24 +37,40 @@ export default function DiscoverPage() {
       setLoading(true);
       setError(null);
       try {
-        // Fetch current user's profile first
         let currentUserProfile: UserProfile | undefined = undefined;
-        if (user && user.uid) { // Ensure user and user.uid are defined
+        if (user && user.uid) {
             const userProfileDocRef = doc(db, 'users', user.uid);
             const userProfileDocSnap = await getDoc(userProfileDocRef);
             if (userProfileDocSnap.exists()) {
                 currentUserProfile = userProfileDocSnap.data() as UserProfile;
             } else {
-                console.warn(`[DiscoverPage] Logged-in user's profile (UID: ${user.uid}) not found in 'users' collection.`);
+                console.warn(`[DiscoverPage] Logged-in user's profile (UID: ${user.uid}) not found in 'users' collection. Attempting to create it.`);
+                try {
+                    const baseUsername = (user.displayName || user.email?.split('@')[0] || 'user').toLowerCase().replace(/[^a-z0-9]/gi, '');
+                    const randomSuffix = Math.floor(1000 + Math.random() * 9000); // 4-digit random number
+                    const username = `${baseUsername}${randomSuffix}`;
+                    
+                    const newUserProfileData: UserProfile = {
+                        uuid: user.uid,
+                        username: username,
+                        profile_name: user.displayName || user.email?.split('@')[0] || 'New User',
+                        profile_picture: user.photoURL || null,
+                    };
+                    await setDoc(userProfileDocRef, newUserProfileData);
+                    currentUserProfile = newUserProfileData; // Use the newly created profile
+                    console.log(`[DiscoverPage] Successfully created missing profile for UID: ${user.uid}`);
+                } catch (creationError) {
+                    console.error(`[DiscoverPage] Failed to create missing profile for UID: ${user.uid}`, creationError);
+                    // Continue without profile if creation fails, collections might not show owner
+                }
             }
         } else {
             console.warn("[DiscoverPage] User or user.uid is undefined, cannot fetch profile.");
         }
 
-
         const collectionsQuery = query(
           collection(db, 'collections'),
-          where('owner', '==', user.uid), // Query for collections owned by the current user
+          where('owner', '==', user.uid), 
           orderBy('createdAt', 'desc'),
           limit(20)
         );
@@ -62,13 +78,12 @@ export default function DiscoverPage() {
         
         const fetchedCollections: EnrichedCollection[] = querySnapshot.docs.map(docSnapshot => {
           const colData = docSnapshot.data() as Omit<Collection, 'id' | 'createdAt' | 'updatedAt'> & { createdAt: Timestamp, updatedAt: Timestamp };
-          // All these collections are owned by the current user, so use currentUserProfile
           return {
             ...colData,
             id: docSnapshot.id,
             createdAt: colData.createdAt,
             updatedAt: colData.updatedAt,
-            ownerDetails: currentUserProfile // Use the pre-fetched profile
+            ownerDetails: currentUserProfile 
           };
         });
         
@@ -81,7 +96,7 @@ export default function DiscoverPage() {
       }
     };
 
-    fetchCollections();
+    fetchCollectionsAndProfile();
   }, [user, authLoading]); 
 
   if (authLoading || loading) {
@@ -155,3 +170,4 @@ function CardSkeleton() {
     </div>
   );
 }
+
