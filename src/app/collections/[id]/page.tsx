@@ -44,6 +44,7 @@ export default function CollectionPage() {
     if (!collectionIdFromParams) return;
     setLoading(true);
     setError(null);
+    setCollectionData(null); // Reset on new fetch
 
     try {
       const collectionDocRef = doc(db, 'collections', collectionIdFromParams);
@@ -51,23 +52,22 @@ export default function CollectionPage() {
 
       if (!collectionDocSnap.exists()) {
         setError('Collection not found.');
-        setCollectionData(null);
         setLoading(false);
         return;
       }
 
       const fetchedCollection = { id: collectionDocSnap.id, ...collectionDocSnap.data() } as Collection;
       
+      const isPublic = fetchedCollection.published === true;
+      const isOwner = user?.uid === fetchedCollection.owner;
 
-      // Check visibility if user is not owner
-      if (user?.uid !== fetchedCollection.owner && !fetchedCollection.published) {
-        setError('This collection is private.');
-        setCollectionData(null); // Or set collectionData to fetchedCollection to show minimal info if desired
+      if (!isPublic && !isOwner) {
+        setError('This collection is private or you do not have permission to view it.');
         setLoading(false);
         return;
       }
+      
       setCollectionData(fetchedCollection);
-
 
       if (fetchedCollection.owner) {
         const ownerDocRef = doc(db, 'users', fetchedCollection.owner);
@@ -233,7 +233,7 @@ export default function CollectionPage() {
         <Info className="mx-auto h-12 w-12 text-destructive mb-4" />
         <h2 className="text-xl font-semibold text-destructive">{error}</h2>
         <Button asChild variant="link" className="mt-4">
-          <NextLink href="/discover"><ArrowLeft className="mr-2 h-4 w-4" /> Go back to My Collections</NextLink>
+          <NextLink href="/discover"><ArrowLeft className="mr-2 h-4 w-4" /> Go back to Discover</NextLink>
         </Button>
       </div>
     );
@@ -245,7 +245,7 @@ export default function CollectionPage() {
         <Info className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
         <h2 className="text-xl font-semibold">Collection not found or still loading.</h2>
          <Button asChild variant="link" className="mt-4">
-          <NextLink href="/discover"><ArrowLeft className="mr-2 h-4 w-4" /> Go back to My Collections</NextLink>
+          <NextLink href="/discover"><ArrowLeft className="mr-2 h-4 w-4" /> Go back to Discover</NextLink>
         </Button>
       </div>
     );
@@ -282,12 +282,12 @@ export default function CollectionPage() {
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-4xl font-headline mb-2 sm:mb-0">{collectionData.title}</CardTitle>
-            {collectionData.published && (
+            {collectionData.published === true && (
               <Badge variant="default" className="w-fit bg-green-600 hover:bg-green-700 text-white">
                 <Globe className="mr-1.5 h-3.5 w-3.5" /> Public Collection
               </Badge>
             )}
-            {!collectionData.published && isOwner && (
+            {collectionData.published !== true && isOwner && (
                  <Badge variant="secondary" className="w-fit">
                     <EyeOff className="mr-1.5 h-3.5 w-3.5" /> Private Collection
                 </Badge>
@@ -329,22 +329,22 @@ export default function CollectionPage() {
                <div className="flex items-center space-x-3">
                 <Switch
                   id="publish-collection"
-                  checked={collectionData.published}
+                  checked={collectionData.published === true}
                   onCheckedChange={handlePublishToggle}
-                  aria-label={collectionData.published ? 'Make collection private' : 'Make collection public'}
+                  aria-label={collectionData.published === true ? 'Make collection private' : 'Make collection public'}
                 />
                 <Label htmlFor="publish-collection" className="flex items-center cursor-pointer">
-                  {collectionData.published ? (
+                  {collectionData.published === true ? (
                     <><Eye className="mr-2 h-4 w-4" /> Public (Visible to everyone)</>
                   ) : (
-                    <><EyeOff className="mr-2 h-4 w-4" /> Private (Visible only to you)</>
+                    <><EyeOff className="mr-2 h-4 w-4" /> Private (Visible only to you and collaborators)</>
                   )}
                 </Label>
               </div>
               <p className="text-xs text-muted-foreground mt-1.5">
-                {collectionData.published 
+                {collectionData.published === true 
                   ? "This collection is currently public and can be seen by anyone."
-                  : "This collection is currently private. Only you can see it."}
+                  : "This collection is currently private."}
               </p>
             </div>
           </CardContent>
@@ -386,4 +386,6 @@ export default function CollectionPage() {
     </div>
   );
 }
+    
+
     
