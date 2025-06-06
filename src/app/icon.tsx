@@ -13,6 +13,9 @@ export const contentType = 'image/png'
 
 // Image generation
 export default function Icon() {
+  // Accent color from your theme: HSL(267, 33%, 64%) which is approximately #A382C7
+  const accentColor = '#A382C7';
+
   return new ImageResponse(
     (
       <div
@@ -22,19 +25,11 @@ export default function Icon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#FFFFFF', // White background
-          borderRadius: '4px', // Rounded corners for the background
+          backgroundColor: accentColor,
+          borderRadius: '4px', // Keep the rounded corners for a softer look
         }}
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24" // Scaled to fit within 32x32 with some padding
-          height="24"
-          viewBox="0 -960 960 960" // Original viewBox from Material Symbols
-          fill="#64748B" // App's primary color
-        >
-          <path d="M200-120v-600q0-33 23.5-56.5T280-800h400q33 0 56.5 23.5T760-720v600L480-300 200-120Zm80-73 200-73 200 73v-527H280v527Zm0 0v-527 527Z"/>
-        </svg>
+        {/* No icon, just a solid color background */}
       </div>
     ),
     {
