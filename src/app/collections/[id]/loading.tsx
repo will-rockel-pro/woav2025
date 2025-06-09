@@ -1,13 +1,11 @@
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, ImageOff, Link as LinkIconFeather } from 'lucide-react';
+import { ImageOff, Link as LinkIconFeather } from 'lucide-react';
 
 export default function CollectionDetailLoading() {
   return (
-    <div className="space-y-8">
-      <div>
-        <Skeleton className="h-9 w-48 mb-6" /> {/* Back button skeleton */}
-      </div>
+    <div className="space-y-8 pt-6"> {/* Added pt-6 for consistency */}
+      {/* Removed back button skeleton and its wrapper div */}
 
       {/* Collection Header Skeleton */}
       <div className="border rounded-lg shadow-md overflow-hidden">
