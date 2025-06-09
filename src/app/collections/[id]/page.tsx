@@ -254,16 +254,7 @@ export default function CollectionPage() {
   const isOwner = user && collectionData.owner === user.uid;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <Button asChild variant="outline" size="sm" className="mb-6">
-          <NextLink href="/discover">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to My Collections
-          </NextLink>
-        </Button>
-      </div>
-
+    <div className="space-y-8 pt-6">
       <Card className="overflow-hidden shadow-lg">
         {collectionData.image ? (
           <Image
@@ -386,6 +377,8 @@ export default function CollectionPage() {
     </div>
   );
 }
+    
+
     
 
     
