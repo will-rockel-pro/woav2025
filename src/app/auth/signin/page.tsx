@@ -67,8 +67,18 @@ export default function SignIn() {
 
     } catch (error: any) {
       console.error("[EmailSignIn] Error during email sign-in process:", error.message, error.code ? `(Code: ${error.code})` : '', error.stack);
-      setError(error.message);
-      toast({ title: "Sign In Failed", description: error.message, variant: "destructive" });
+      
+      let displayMessage = "An unknown error occurred during sign-in. Please try again.";
+      if (error.code === 'auth/invalid-credential' || 
+          error.code === 'auth/wrong-password' || 
+          error.code === 'auth/user-not-found') {
+        displayMessage = "Invalid email or password. Please check your credentials and try again.";
+      } else if (error.message) {
+        displayMessage = error.message; // Fallback for other Firebase errors
+      }
+
+      setError(displayMessage);
+      toast({ title: "Sign In Failed", description: displayMessage, variant: "destructive" });
     } finally {
       setLoading(false);
     }
