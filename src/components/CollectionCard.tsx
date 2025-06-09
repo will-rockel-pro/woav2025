@@ -48,9 +48,11 @@ export default function CollectionCard({ collection, owner, priority = false }: 
             {collection.title}
           </NextLink>
         </CardTitle>
-        <CardDescription className="text-sm line-clamp-2 mb-2">
-          {collection.description || 'No description available.'}
-        </CardDescription>
+        {collection.description && collection.description.trim() !== '' && (
+          <CardDescription className="text-sm line-clamp-2 mb-2">
+            {collection.description}
+          </CardDescription>
+        )}
         {owner && (
           <div className="text-xs text-muted-foreground flex items-center mt-2">
             <Avatar className="w-5 h-5 mr-1.5 flex-shrink-0">
