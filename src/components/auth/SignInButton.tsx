@@ -41,7 +41,7 @@ export default function SignInButton() {
             profile_picture: user.photoURL || null,
           };
           await setDoc(userRef, newUserProfile);
-          console.log('[SignInButton] New user profile created in Firestore.');
+          console.log('[SignInButton DEBUG] New user profile created in Firestore for UID:', user.uid);
 
           // Create a default "Reading List" collection for new user
           const readingListCollectionData = {
@@ -54,8 +54,8 @@ export default function SignInButton() {
             updatedAt: serverTimestamp() as Timestamp,
             image: '', // No default image
           };
-          await addDoc(collection(db, "collections"), readingListCollectionData);
-          console.log('[SignInButton] Default "Reading List" collection created for new user.');
+          const readingListDocRef = await addDoc(collection(db, "collections"), readingListCollectionData);
+          console.log(`[SignInButton DEBUG] "Reading List" collection created for user ${user.uid}. Document ID: ${readingListDocRef.id}`);
           
           toast({ title: "Welcome!", description: "Your profile and 'Reading List' collection have been created." });
         } else {

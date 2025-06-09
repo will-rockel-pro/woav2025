@@ -59,6 +59,7 @@ export default function SignUpPage() {
           profile_picture: user.photoURL || null,
         };
         await setDoc(userRef, newUserProfile);
+        console.log(`[SignUpPage DEBUG] User profile created for ${user.uid}`);
 
         // Create a default "Reading List" collection
         const readingListCollectionData = {
@@ -71,7 +72,8 @@ export default function SignUpPage() {
           updatedAt: serverTimestamp() as Timestamp,
           image: '', // No default image
         };
-        await addDoc(collection(db, "collections"), readingListCollectionData);
+        const readingListDocRef = await addDoc(collection(db, "collections"), readingListCollectionData);
+        console.log(`[SignUpPage DEBUG] "Reading List" collection created for user ${user.uid}. Document ID: ${readingListDocRef.id}`);
         
         toast({ title: "Account Created!", description: "Welcome! Your account and 'Reading List' collection are ready." });
         

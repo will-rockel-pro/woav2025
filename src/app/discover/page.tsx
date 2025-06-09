@@ -33,42 +33,43 @@ export default function DiscoverPage() {
         setCollections([]);
         setLoading(false); 
         setError(null);    
+        console.log('[DiscoverPage DEBUG] No user or UID, clearing collections.');
         return;
       }
 
       setLoading(true);
       setError(null);
+      console.log(`[DiscoverPage DEBUG] Fetching profile and collections for user: ${user.uid}`);
       try {
         let currentUserProfile: UserProfile | undefined = undefined;
-        if (user && user.uid) {
-            const userProfileDocRef = doc(db, 'users', user.uid);
-            const userProfileDocSnap = await getDoc(userProfileDocRef);
-            if (userProfileDocSnap.exists()) {
-                currentUserProfile = userProfileDocSnap.data() as UserProfile;
-            } else {
-                console.warn(`[DiscoverPage] Logged-in user's profile (UID: ${user.uid}) not found in 'users' collection. Attempting to create it.`);
-                try {
-                    const baseUsername = (user.displayName || user.email?.split('@')[0] || 'user').toLowerCase().replace(/[^a-z0-9]/gi, '');
-                    const randomSuffix = Math.floor(1000 + Math.random() * 9000); // 4-digit random number
-                    const username = `${baseUsername}${randomSuffix}`;
-                    
-                    const newUserProfileData: UserProfile = {
-                        uuid: user.uid,
-                        username: username,
-                        profile_name: user.displayName || user.email?.split('@')[0] || 'New User',
-                        profile_picture: user.photoURL || null,
-                    };
-                    await setDoc(userProfileDocRef, newUserProfileData);
-                    currentUserProfile = newUserProfileData; // Use the newly created profile
-                    console.log(`[DiscoverPage] Successfully created missing profile for UID: ${user.uid}`);
-                } catch (creationError) {
-                    console.error(`[DiscoverPage] Failed to create missing profile for UID: ${user.uid}`, creationError);
-                }
-            }
+        const userProfileDocRef = doc(db, 'users', user.uid);
+        const userProfileDocSnap = await getDoc(userProfileDocRef);
+        
+        if (userProfileDocSnap.exists()) {
+            currentUserProfile = userProfileDocSnap.data() as UserProfile;
+            console.log(`[DiscoverPage DEBUG] Found existing profile for UID: ${user.uid}`);
         } else {
-            console.warn("[DiscoverPage] User or user.uid is undefined, cannot fetch profile.");
+            console.warn(`[DiscoverPage DEBUG] Profile for UID: ${user.uid} not found. Attempting to create.`);
+            try {
+                const baseUsername = (user.displayName || user.email?.split('@')[0] || 'user').toLowerCase().replace(/[^a-z0-9]/gi, '');
+                const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+                const username = `${baseUsername}${randomSuffix}`;
+                
+                const newUserProfileData: UserProfile = {
+                    uuid: user.uid,
+                    username: username,
+                    profile_name: user.displayName || user.email?.split('@')[0] || 'New User',
+                    profile_picture: user.photoURL || null,
+                };
+                await setDoc(userProfileDocRef, newUserProfileData);
+                currentUserProfile = newUserProfileData;
+                console.log(`[DiscoverPage DEBUG] Successfully created missing profile for UID: ${user.uid}`);
+            } catch (creationError) {
+                console.error(`[DiscoverPage DEBUG] Failed to create missing profile for UID: ${user.uid}`, creationError);
+            }
         }
 
+        console.log(`[DiscoverPage DEBUG] Querying collections for owner: ${user.uid}`);
         const collectionsQuery = query(
           collection(db, 'collections'),
           where('owner', '==', user.uid), 
@@ -79,6 +80,7 @@ export default function DiscoverPage() {
         
         const fetchedCollections: EnrichedCollection[] = querySnapshot.docs.map(docSnapshot => {
           const colData = docSnapshot.data() as Omit<Collection, 'id' | 'createdAt' | 'updatedAt'> & { createdAt: Timestamp, updatedAt: Timestamp };
+          console.log(`[DiscoverPage DEBUG] Processing fetched collection: ID=${docSnapshot.id}, Title='${colData.title}', Owner=${colData.owner}`);
           return {
             ...colData,
             id: docSnapshot.id,
@@ -88,9 +90,10 @@ export default function DiscoverPage() {
           };
         });
         
+        console.log(`[DiscoverPage DEBUG] Total collections processed for user ${user.uid}: ${fetchedCollections.length}. Titles: [${fetchedCollections.map(c => c.title).join(', ')}]`);
         setCollections(fetchedCollections);
       } catch (err: any) {
-        console.error("Error fetching collections: ", err);
+        console.error("[DiscoverPage DEBUG] Error fetching collections: ", err);
         setError(err.message || "Failed to load collections. Please try again later.");
       } finally {
         setLoading(false);
