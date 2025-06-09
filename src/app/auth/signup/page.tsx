@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, addDoc, collection, serverTimestamp, Timestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Link from 'next/link';
 import { auth, db } from "@/lib/firebase";
@@ -56,12 +56,24 @@ export default function SignUpPage() {
           uuid: user.uid,
           username: username,
           profile_name: user.displayName || user.email?.split('@')[0] || 'New User', 
-          profile_picture: user.photoURL || null, 
-          // bio: null, // Bio feature temporarily removed
+          profile_picture: user.photoURL || null,
         };
         await setDoc(userRef, newUserProfile);
 
-        toast({ title: "Account Created!", description: "Welcome! Your account has been successfully created." });
+        // Create a default "Reading List" collection
+        const readingListCollectionData = {
+          title: "Reading List",
+          description: "A place to save articles and links to read later.",
+          owner: user.uid,
+          published: false, // Default to private
+          collaborators: [],
+          createdAt: serverTimestamp() as Timestamp,
+          updatedAt: serverTimestamp() as Timestamp,
+          image: '', // No default image
+        };
+        await addDoc(collection(db, "collections"), readingListCollectionData);
+        
+        toast({ title: "Account Created!", description: "Welcome! Your account and 'Reading List' collection are ready." });
         
         // Attempt to create server session immediately after signup
         const idToken = await user.getIdToken(true);

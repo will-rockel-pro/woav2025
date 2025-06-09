@@ -2,7 +2,7 @@
 'use client';
 
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { auth, db, googleProvider } from '@/lib/firebase';
@@ -42,7 +42,22 @@ export default function SignInButton() {
           };
           await setDoc(userRef, newUserProfile);
           console.log('[SignInButton] New user profile created in Firestore.');
-          toast({ title: "Welcome!", description: "Your profile has been created." });
+
+          // Create a default "Reading List" collection for new user
+          const readingListCollectionData = {
+            title: "Reading List",
+            description: "A place to save articles and links to read later.",
+            owner: user.uid,
+            published: false, // Default to private
+            collaborators: [],
+            createdAt: serverTimestamp() as Timestamp,
+            updatedAt: serverTimestamp() as Timestamp,
+            image: '', // No default image
+          };
+          await addDoc(collection(db, "collections"), readingListCollectionData);
+          console.log('[SignInButton] Default "Reading List" collection created for new user.');
+          
+          toast({ title: "Welcome!", description: "Your profile and 'Reading List' collection have been created." });
         } else {
           console.log('[SignInButton] Existing user profile found.');
           toast({ title: "Welcome back!" });

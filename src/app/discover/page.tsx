@@ -7,8 +7,10 @@ import { db } from '@/lib/firebase';
 import type { Collection, UserProfile } from '@/types';
 import CollectionCard from '@/components/CollectionCard';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Library } from 'lucide-react';
+import { Library, PlusCircle } from 'lucide-react';
 import { useAuthStatus } from '@/hooks/useAuthStatus';
+import { Button } from '@/components/ui/button';
+import NextLink from 'next/link'; // Renamed to avoid conflict with Link type
 
 interface EnrichedCollection extends Collection {
   ownerDetails?: UserProfile;
@@ -61,7 +63,6 @@ export default function DiscoverPage() {
                     console.log(`[DiscoverPage] Successfully created missing profile for UID: ${user.uid}`);
                 } catch (creationError) {
                     console.error(`[DiscoverPage] Failed to create missing profile for UID: ${user.uid}`, creationError);
-                    // Continue without profile if creation fails, collections might not show owner
                 }
             }
         } else {
@@ -127,6 +128,13 @@ export default function DiscoverPage() {
         <p className="text-lg text-muted-foreground max-w-xl">
           View and manage your personal collections.
         </p>
+        <div className="mt-6 mb-8 flex justify-center">
+          <Button asChild size="lg">
+            <NextLink href="/create-collection">
+              <PlusCircle className="mr-2 h-5 w-5" /> Create New Collection
+            </NextLink>
+          </Button>
+        </div>
       </div>
  
       {collections.length === 0 ? (
@@ -149,6 +157,7 @@ function DiscoverLoading() {
         <Skeleton className="w-16 h-16 rounded-full mb-4" />
         <Skeleton className="h-10 w-72 mb-2" />
         <Skeleton className="h-5 w-96" />
+        <Skeleton className="h-12 w-64 mt-6 mb-8" /> 
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {[...Array(8)].map((_, i) => (
@@ -170,4 +179,3 @@ function CardSkeleton() {
     </div>
   );
 }
-
