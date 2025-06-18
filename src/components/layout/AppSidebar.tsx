@@ -17,7 +17,7 @@ import {
   SidebarMenuSubButton,
   SidebarTrigger,
   SidebarMenuSkeleton,
-  useSidebar // Import useSidebar
+  useSidebar
 } from '@/components/ui/sidebar';
 import { Skeleton } from '@/components/ui/skeleton';
 import Logo from '@/components/Logo';
@@ -32,12 +32,12 @@ import {
   Link as LinkIcon,
   User as UserIcon,
   FolderOpen,
-  Settings, 
+  Settings,
   LogOut,
-  FilePlus,
-  Archive // Import Archive for direct use
+  FilePlus
+  // Archive icon is now solely in Logo.tsx
 } from 'lucide-react';
-import SignOutButton from '../auth/SignOutButton'; 
+import SignOutButton from '../auth/SignOutButton';
 import { cn } from '@/lib/utils';
 
 export default function AppSidebar() {
@@ -78,7 +78,7 @@ export default function AppSidebar() {
       const q = query(
         collection(db, 'collections'),
         where('owner', '==', user.uid),
-        orderBy('title', 'asc') 
+        orderBy('title', 'asc')
       );
       const unsubscribe = getDocs(q)
         .then((querySnapshot) => {
@@ -104,23 +104,13 @@ export default function AppSidebar() {
 
 
   return (
-    <Sidebar collapsible="icon" className="hidden md:flex">
-      <SidebarHeader>
+    <Sidebar collapsible="icon" className="hidden md:flex"> {/* Sidebar has 'group' class by default from ui/sidebar.tsx */}
+      <SidebarHeader> {/* SidebarHeader adds p-2 by default */}
         <div className={cn(
-          "flex items-center w-full",
-          sidebarState === 'expanded' ? "justify-between" : "justify-center"
+          "flex items-center w-full justify-between h-10" // Ensure consistent height and always justify-between
         )}>
-          {sidebarState === 'expanded' && (
-            <Link href="/" className="flex items-center space-x-2 text-primary hover:text-primary/80 transition-colors">
-              <Archive className="h-7 w-7" />
-              <span className="font-headline text-2xl font-semibold">WOAV Lite</span>
-            </Link>
-          )}
-          <SidebarTrigger
-            className={cn(
-              {'ml-auto': sidebarState === 'expanded'}
-            )}
-          />
+          <Logo /> {/* Logo component will now animate its text based on parent group-data-state */}
+          <SidebarTrigger /> {/* Trigger is always visible, positioned by justify-between */}
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -216,7 +206,7 @@ export default function AppSidebar() {
                     tooltip="Sign In"
                     >
                     <Link href="/auth/signin">
-                        <LogOut /> 
+                        <LogOut />
                         <span>Sign In</span>
                     </Link>
                 </SidebarMenuButton>
