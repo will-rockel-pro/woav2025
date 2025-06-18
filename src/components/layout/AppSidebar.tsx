@@ -16,8 +16,7 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
   SidebarMenuSkeleton,
-  SidebarTrigger, // Re-added
-} from '@/components/ui/sidebar';
+} from '@/components/ui/sidebar'; // Removed SidebarTrigger
 import { Skeleton } from '@/components/ui/skeleton';
 import Logo from '@/components/Logo';
 import { useAuthStatus } from '@/hooks/useAuthStatus';
@@ -32,7 +31,7 @@ import {
   FolderOpen,
   LogOut,
   FilePlus,
-  PanelLeft, // Re-added
+  // PanelLeft removed as it's no longer used here
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -97,19 +96,19 @@ export default function AppSidebar() {
   const isActive = (path: string) => pathname === path;
   const isCollectionsActive = () => pathname.startsWith('/collections/') || pathname === '/create-collection';
 
-
   return (
-    <Sidebar collapsible="icon" className="hidden md:flex group">
+    // Changed collapsible to "offcanvas" for desktop
+    // The "group" class is on the SidebarProvider's div, so Logo should still react correctly
+    <Sidebar collapsible="offcanvas" className="hidden md:flex">
       <SidebarHeader>
+        {/* SidebarHeader now only contains the Logo */}
         <div className={cn(
-          "flex items-center w-full", // Removed fixed h-10, SidebarHeader has p-2 by default
-          "group-data-[state=collapsed]:justify-center",
-          "group-data-[state=expanded]:justify-between"
+          "flex items-center w-full p-0", // Removed fixed h-10, ensure padding is handled or removed if not needed
+          // justify-center might be good if logo is just icon, justify-start if text visible
+          "group-data-[state=expanded]:justify-start", 
+          "group-data-[state=collapsed]:justify-center" // Sidebar is offcanvas, so this state applies when it's hidden
         )}>
           <Logo />
-          <SidebarTrigger>
-            <PanelLeft />
-          </SidebarTrigger>
         </div>
       </SidebarHeader>
       <SidebarContent>

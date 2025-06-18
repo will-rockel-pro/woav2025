@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,7 +7,7 @@ import Logo from '@/components/Logo';
 import UserNav from '@/components/layout/UserNav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { SearchIcon } from 'lucide-react';
+import { SearchIcon, PanelLeft } from 'lucide-react'; // Added PanelLeft
 import { SidebarTrigger } from '@/components/ui/sidebar';
 
 export default function Header() {
@@ -34,7 +35,14 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
         <div className="flex items-center space-x-2">
-          <SidebarTrigger className="mr-2 md:hidden" /> {/* Hidden on md and up, visible on mobile */}
+          {/* Desktop Sidebar Trigger - visible on md and up */}
+          <SidebarTrigger className="hidden md:flex" aria-label="Toggle desktop sidebar">
+             <PanelLeft />
+          </SidebarTrigger>
+          {/* Mobile Sidebar Trigger - hidden on md and up */}
+          <SidebarTrigger className="mr-2 md:hidden" aria-label="Toggle mobile sidebar">
+             <PanelLeft />
+          </SidebarTrigger>
           <Logo />
         </div>
         <div className="flex flex-1 items-center justify-end space-x-4">
