@@ -7,6 +7,7 @@ import UserNav from '@/components/layout/UserNav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { SearchIcon } from 'lucide-react';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 export default function Header() {
   const router = useRouter();
@@ -14,7 +15,6 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    // Sync search input with URL query param 'q' if on search page
     if (router && (window.location.pathname === '/search' || window.location.pathname.startsWith('/search/'))) {
        setSearchQuery(searchParams.get('q') || '');
     }
@@ -33,7 +33,10 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
-        <Logo />
+        <div className="flex items-center space-x-2">
+          <SidebarTrigger className="mr-2 md:hidden" /> {/* Hidden on md and up, visible on mobile */}
+          <Logo />
+        </div>
         <div className="flex flex-1 items-center justify-end space-x-4">
           <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-md ml-auto">
             <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
