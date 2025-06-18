@@ -16,8 +16,7 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
   SidebarMenuSkeleton,
-  // SidebarTrigger, // No longer used here
-  useSidebar
+  SidebarTrigger, // Re-added
 } from '@/components/ui/sidebar';
 import { Skeleton } from '@/components/ui/skeleton';
 import Logo from '@/components/Logo';
@@ -32,9 +31,9 @@ import {
   User as UserIcon,
   FolderOpen,
   LogOut,
-  FilePlus
+  FilePlus,
+  PanelLeft, // Re-added
 } from 'lucide-react';
-// Removed SignOutButton import as it's not directly used here, assumed to be in UserNav or similar
 import { cn } from '@/lib/utils';
 
 export default function AppSidebar() {
@@ -44,7 +43,6 @@ export default function AppSidebar() {
   const [profileLoading, setProfileLoading] = useState(true);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [collectionsLoading, setCollectionsLoading] = useState(true);
-  // const { state: sidebarState } = useSidebar(); // Not directly needed for logic here anymore
 
   useEffect(() => {
     if (user && !authLoading) {
@@ -75,7 +73,7 @@ export default function AppSidebar() {
       const q = query(
         collection(db, 'collections'),
         where('owner', '==', user.uid),
-        orderBy('title', 'asc') 
+        orderBy('title', 'asc')
       );
       const unsubscribe = getDocs(q)
         .then((querySnapshot) => {
@@ -101,14 +99,17 @@ export default function AppSidebar() {
 
 
   return (
-    <Sidebar collapsible="icon" className="hidden md:flex group"> {/* Ensure group class is here if Logo relies on it directly */}
+    <Sidebar collapsible="icon" className="hidden md:flex group">
       <SidebarHeader>
         <div className={cn(
-          "flex items-center w-full h-10",
-          "group-data-[state=collapsed]:justify-center" 
+          "flex items-center w-full", // Removed fixed h-10, SidebarHeader has p-2 by default
+          "group-data-[state=collapsed]:justify-center",
+          "group-data-[state=expanded]:justify-between"
         )}>
           <Logo />
-          {/* SidebarTrigger removed from here. Desktop toggle handled by SidebarRail or external trigger. */}
+          <SidebarTrigger>
+            <PanelLeft />
+          </SidebarTrigger>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -212,10 +213,8 @@ export default function AppSidebar() {
           )}
         </SidebarMenu>
       </SidebarContent>
-      {/* Footer can be kept if needed, or removed if SignOutButton is elsewhere */}
       {user && !authLoading && (
          <SidebarFooter className="p-2">
-          {/* Example: Could put a settings icon or compact sign out here if needed */}
         </SidebarFooter>
       )}
     </Sidebar>
