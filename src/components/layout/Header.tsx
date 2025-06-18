@@ -7,19 +7,27 @@ import Logo from '@/components/Logo';
 import UserNav from '@/components/layout/UserNav';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { SearchIcon, PanelLeft } from 'lucide-react'; // Added PanelLeft
+import { SearchIcon, PanelLeft } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
 
 export default function Header() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // Even if the input is removed, we might want to keep search state logic if it's used elsewhere or for future use.
+  // For now, I'll keep setSearchQuery and searchQuery state variables.
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    if (router && (window.location.pathname === '/search' || window.location.pathname.startsWith('/search/'))) {
+    // If the page is /search, update the local searchQuery state from URL params
+    if (window.location.pathname === '/search' || window.location.pathname.startsWith('/search/')) {
        setSearchQuery(searchParams.get('q') || '');
     }
-  }, [searchParams, router]);
+    // Clear search query if navigating away from search page, unless you want it persistent
+    // else {
+    //   setSearchQuery('');
+    // }
+  }, [searchParams]);
 
 
   const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -43,19 +51,16 @@ export default function Header() {
           <SidebarTrigger className="mr-2 md:hidden" aria-label="Toggle mobile sidebar">
              <PanelLeft />
           </SidebarTrigger>
-          <Logo />
+          <div className={cn(
+            "transition-all duration-300 ease-in-out",
+            "group-data-[state=expanded]/sidebar-wrapper:md:pl-0", // No extra padding when expanded
+            "group-data-[state=collapsed]/sidebar-wrapper:md:pl-0" // No extra padding when collapsed (offcanvas)
+          )}>
+            <Logo />
+          </div>
         </div>
         <div className="flex flex-1 items-center justify-end space-x-4">
-          <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-md ml-auto">
-            <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search collections, links, users..."
-              className="pl-10 w-full"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </form>
+          {/* Search input form removed */}
           <UserNav />
         </div>
       </div>
