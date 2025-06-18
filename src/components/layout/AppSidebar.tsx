@@ -15,7 +15,8 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
-  SidebarTrigger, // Main trigger for desktop will be in SidebarHeader here
+  SidebarTrigger,
+  SidebarMenuSkeleton // Added missing import
 } from '@/components/ui/sidebar';
 import { Skeleton } from '@/components/ui/skeleton';
 import Logo from '@/components/Logo';
@@ -30,13 +31,13 @@ import {
   Link as LinkIcon,
   User as UserIcon,
   FolderOpen,
-  Settings, // Example for a potential future settings link
+  Settings, 
   LogOut,
   ChevronDown,
   ChevronRight,
   FilePlus
 } from 'lucide-react';
-import SignOutButton from '../auth/SignOutButton'; // For a potential footer signout
+import SignOutButton from '../auth/SignOutButton'; 
 
 export default function AppSidebar() {
   const pathname = usePathname();
