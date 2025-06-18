@@ -16,7 +16,8 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
   SidebarTrigger,
-  SidebarMenuSkeleton // Added missing import
+  SidebarMenuSkeleton,
+  useSidebar // Import useSidebar
 } from '@/components/ui/sidebar';
 import { Skeleton } from '@/components/ui/skeleton';
 import Logo from '@/components/Logo';
@@ -33,11 +34,11 @@ import {
   FolderOpen,
   Settings, 
   LogOut,
-  ChevronDown,
-  ChevronRight,
-  FilePlus
+  FilePlus,
+  Archive // Import Archive for direct use
 } from 'lucide-react';
 import SignOutButton from '../auth/SignOutButton'; 
+import { cn } from '@/lib/utils';
 
 export default function AppSidebar() {
   const pathname = usePathname();
@@ -46,6 +47,7 @@ export default function AppSidebar() {
   const [profileLoading, setProfileLoading] = useState(true);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [collectionsLoading, setCollectionsLoading] = useState(true);
+  const { state: sidebarState } = useSidebar(); // Get sidebar state
 
   useEffect(() => {
     if (user && !authLoading) {
@@ -76,7 +78,7 @@ export default function AppSidebar() {
       const q = query(
         collection(db, 'collections'),
         where('owner', '==', user.uid),
-        orderBy('title', 'asc') // Order by title for easier scanning
+        orderBy('title', 'asc') 
       );
       const unsubscribe = getDocs(q)
         .then((querySnapshot) => {
@@ -91,8 +93,6 @@ export default function AppSidebar() {
         .finally(() => {
           setCollectionsLoading(false);
         });
-      // For realtime updates, use onSnapshot and return the unsubscribe function
-      // For now, getDocs is fine for simplicity
     } else if (!user && !authLoading) {
       setCollections([]);
       setCollectionsLoading(false);
@@ -104,11 +104,23 @@ export default function AppSidebar() {
 
 
   return (
-    <Sidebar collapsible="icon" className="hidden md:flex"> {/* Hidden on mobile, main trigger in Header.tsx handles mobile */}
+    <Sidebar collapsible="icon" className="hidden md:flex">
       <SidebarHeader>
-        <div className="flex items-center justify-between w-full">
-            <Logo />
-            <SidebarTrigger className="ml-auto data-[state=collapsed]:ml-0" /> {/* Desktop trigger */}
+        <div className={cn(
+          "flex items-center w-full",
+          sidebarState === 'expanded' ? "justify-between" : "justify-center"
+        )}>
+          {sidebarState === 'expanded' && (
+            <Link href="/" className="flex items-center space-x-2 text-primary hover:text-primary/80 transition-colors">
+              <Archive className="h-7 w-7" />
+              <span className="font-headline text-2xl font-semibold">WOAV Lite</span>
+            </Link>
+          )}
+          <SidebarTrigger
+            className={cn(
+              {'ml-auto': sidebarState === 'expanded'}
+            )}
+          />
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -132,10 +144,6 @@ export default function AppSidebar() {
                 <SidebarMenuButton
                   isActive={isCollectionsActive()}
                   tooltip="My Collections"
-                  className="group-data-[collapsible=icon]:aria-[current=page]:bg-sidebar-accent"
-                  suffix={
-                     <ChevronDown className="group-data-[state=open]:hidden group-data-[collapsible=icon]:hidden" />
-                  }
                 >
                   <Library />
                   <span>My Collections</span>
@@ -169,11 +177,6 @@ export default function AppSidebar() {
                       </SidebarMenuSubItem>
                     ))
                   )}
-                  {/* {collections.length === 0 && !collectionsLoading && (
-                     <SidebarMenuSubItem>
-                        <span className="px-2 py-1.5 text-xs text-muted-foreground">No collections yet.</span>
-                    </SidebarMenuSubItem>
-                  )} */}
                 </SidebarMenuSub>
               </SidebarMenuItem>
 
@@ -223,19 +226,6 @@ export default function AppSidebar() {
       </SidebarContent>
       {user && !authLoading && (
          <SidebarFooter className="p-2">
-            {/* Example: Sign Out Button in Footer */}
-            {/* <SignOutButton /> */}
-            {/* Or a settings link */}
-            {/* <SidebarMenu>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={isActive('/settings')} tooltip="Settings">
-                        <Link href="/settings">
-                        <Settings />
-                        <span>Settings</span>
-                        </Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </SidebarMenu> */}
         </SidebarFooter>
       )}
     </Sidebar>
