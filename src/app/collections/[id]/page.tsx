@@ -12,7 +12,7 @@ import LinkCard from '@/components/LinkCard';
 import AddLinkForm from '@/components/AddLinkForm';
 import { useAuthStatus } from '@/hooks/useAuthStatus';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Info, Link as LinkIconFeather, ImageOff, UploadCloud, Eye, EyeOff, Globe } from 'lucide-react';
+import { ArrowLeft, Info, Link as LinkIconFeather, ImageOff, UploadCloud, Eye, EyeOff } from 'lucide-react'; // Globe removed
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -273,11 +273,7 @@ export default function CollectionPage() {
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-4xl font-headline mb-2 sm:mb-0">{collectionData.title}</CardTitle>
-            {collectionData.published === true && (
-              <Badge variant="default" className="w-fit bg-green-600 hover:bg-green-700 text-white">
-                <Globe className="mr-1.5 h-3.5 w-3.5" /> Public Collection
-              </Badge>
-            )}
+            {/* Public badge removed */}
             {collectionData.published !== true && isOwner && (
                  <Badge variant="secondary" className="w-fit">
                     <EyeOff className="mr-1.5 h-3.5 w-3.5" /> Private Collection

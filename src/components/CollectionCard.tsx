@@ -4,7 +4,7 @@ import NextLink from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { Collection, UserProfile } from '@/types';
-import { Eye, UserCircle, EyeOff, Globe } from 'lucide-react'; // Added Globe
+import { Eye, UserCircle, EyeOff } from 'lucide-react'; // Removed Globe
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -37,11 +37,7 @@ export default function CollectionCard({ collection, owner, priority = false }: 
               <EyeOff className="mr-1.5 h-3.5 w-3.5" /> Private
             </Badge>
           )}
-          {collection.published && (
-            <Badge variant="default" className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white">
-              <Globe className="mr-1.5 h-3.5 w-3.5" /> Public
-            </Badge>
-          )}
+          {/* Public badge removed as per request */}
         </div>
         <CardTitle className="text-xl mb-1 font-headline">
           <NextLink href={`/collections/${collection.id}`} className="hover:text-primary transition-colors">
