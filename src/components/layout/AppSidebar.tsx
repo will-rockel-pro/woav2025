@@ -18,7 +18,7 @@ import {
   SidebarTrigger,
   SidebarMenuSkeleton,
 } from '@/components/ui/sidebar';
-import { Skeleton } from '@/components/ui/skeleton'; // Added Skeleton import
+import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStatus } from '@/hooks/useAuthStatus';
@@ -33,7 +33,7 @@ import {
   PanelLeft,
   UserCircle,
   LogIn,
-  FolderOpen,
+  // FolderOpen, // Not used
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -119,8 +119,8 @@ export default function AppSidebar() {
     <Sidebar collapsible="icon" className="hidden md:flex">
       <SidebarHeader className="flex items-center justify-between p-2 group-data-[state=collapsed]:justify-center">
         <div className="flex items-center">
-          <SidebarTrigger className="mr-2">
-            <PanelLeft />
+          <SidebarTrigger className="mr-2" size="icon"> {/* Ensure button is sized for icon */}
+            <PanelLeft className="h-6 w-6" />
           </SidebarTrigger>
           <span className="font-headline text-xl font-semibold group-data-[state=collapsed]:hidden">
             Woav
@@ -134,9 +134,10 @@ export default function AppSidebar() {
               asChild
               isActive={isActive('/discover')}
               tooltip="Discover"
+              size="lg"
             >
               <Link href="/discover">
-                <Lightbulb />
+                <Lightbulb className="h-6 w-6" />
                 <span className="group-data-[state=collapsed]:hidden">Discover</span>
               </Link>
             </SidebarMenuButton>
@@ -150,9 +151,10 @@ export default function AppSidebar() {
                     asChild
                     isActive={isActive(`/collections/${readingListCollection.id}`)}
                     tooltip="Reading List"
+                    size="lg"
                   >
                     <Link href={`/collections/${readingListCollection.id}`}>
-                      <Search />
+                      <Search className="h-6 w-6" />
                       <span className="group-data-[state=collapsed]:hidden">Reading List</span>
                     </Link>
                   </SidebarMenuButton>
@@ -163,9 +165,10 @@ export default function AppSidebar() {
                   asChild
                   isActive={isActive('/add-link')}
                   tooltip="New"
+                  size="lg"
                 >
                   <Link href="/add-link">
-                    <PlusCircle />
+                    <PlusCircle className="h-6 w-6" />
                     <span className="group-data-[state=collapsed]:hidden">New</span>
                   </Link>
                 </SidebarMenuButton>
@@ -175,8 +178,9 @@ export default function AppSidebar() {
                 <SidebarMenuButton
                   isActive={isCollectionsActive() && (!readingListCollection || pathname !== `/collections/${readingListCollection.id}`)}
                   tooltip="Collections"
+                  size="lg"
                 >
-                  <Library />
+                  <Library className="h-6 w-6" />
                   <span className="group-data-[state=collapsed]:hidden">Collections</span>
                 </SidebarMenuButton>
                 <SidebarMenuSub>
@@ -222,9 +226,10 @@ export default function AppSidebar() {
                     asChild
                     isActive={isActive('/auth/signin')}
                     tooltip="Sign In"
+                    size="lg"
                     >
                     <Link href="/auth/signin">
-                        <LogIn />
+                        <LogIn className="h-6 w-6" />
                         <span className="group-data-[state=collapsed]:hidden">Sign In</span>
                     </Link>
                 </SidebarMenuButton>
@@ -236,13 +241,16 @@ export default function AppSidebar() {
          <SidebarFooter className="p-2 border-t border-sidebar-border">
             <Link 
               href={`/profile/${userProfile.username}`}
-              className="flex items-center space-x-2 p-2 hover:bg-sidebar-accent rounded-md group-data-[state=collapsed]:justify-center"
+              className={cn(
+                "flex items-center space-x-2 p-2 hover:bg-sidebar-accent rounded-md",
+                "group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:p-0"
+              )}
               title={userProfile.profile_name}
             >
-              <Avatar className="h-8 w-8">
+              <Avatar className="h-8 w-8 group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10">
                 <AvatarImage src={userProfile.profile_picture ?? undefined} alt={userProfile.profile_name} data-ai-hint="user avatar" />
                 <AvatarFallback className="text-xs">
-                  {userProfile.profile_name ? userProfile.profile_name.charAt(0).toUpperCase() : <UserCircle />}
+                  {userProfile.profile_name ? userProfile.profile_name.charAt(0).toUpperCase() : <UserCircle className="h-6 w-6" />}
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col group-data-[state=collapsed]:hidden">
@@ -252,10 +260,13 @@ export default function AppSidebar() {
             </Link>
         </SidebarFooter>
       )}
-       {(authLoading || profileLoading && user) && (
+       {(authLoading || (profileLoading && user)) && (
          <SidebarFooter className="p-2 border-t border-sidebar-border">
-            <div className="flex items-center space-x-2 p-2 group-data-[state=collapsed]:justify-center">
-              <Skeleton className="h-8 w-8 rounded-full" />
+            <div className={cn(
+                "flex items-center space-x-2 p-2",
+                "group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:p-0"
+              )}>
+              <Skeleton className="h-8 w-8 rounded-full group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10" />
               <div className="flex flex-col space-y-1 group-data-[state=collapsed]:hidden">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-3 w-32" />
