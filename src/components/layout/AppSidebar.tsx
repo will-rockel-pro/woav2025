@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -22,7 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStatus } from '@/hooks/useAuthStatus';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, orderBy, doc, getDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
 import type { Collection as CollectionType, UserProfile } from '@/types';
 import {
   Lightbulb,
@@ -115,21 +116,26 @@ export default function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="hidden md:flex">
-      <SidebarHeader className="flex items-center justify-between p-2 group-data-[state=collapsed]:justify-center">
+      <SidebarHeader className="border-b border-sidebar-border p-0">
         <div className={cn(
-          "flex items-center",
-          "group-data-[state=expanded]:w-full group-data-[state=expanded]:justify-between",
-          "group-data-[state=collapsed]:justify-center"
+          "flex items-center h-14",
+          "group-data-[state=expanded]:w-full group-data-[state=expanded]:px-4 group-data-[state=expanded]:justify-between",
+          "group-data-[state=collapsed]:w-14" 
         )}>
           <span className="font-headline text-xl font-semibold group-data-[state=collapsed]:hidden">
             Woav
           </span>
-          <SidebarTrigger size="icon">
+          <SidebarTrigger
+            className={cn(
+              "group-data-[state=expanded]:ml-auto",
+              "group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:p-0 group-data-[state=collapsed]:flex group-data-[state=collapsed]:items-center group-data-[state=collapsed]:justify-start group-data-[state=collapsed]:pl-4"
+            )}
+          >
             <PanelLeft className="h-6 w-6" />
           </SidebarTrigger>
         </div>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="pt-6">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -238,15 +244,16 @@ export default function AppSidebar() {
           )}
         </SidebarMenu>
       </SidebarContent>
-      {(authLoading || (user && profileLoading)) && (
-         <SidebarFooter className="p-2 border-t border-sidebar-border">
+       {(authLoading || (user && profileLoading)) && (
+         <SidebarFooter className="p-0 border-t border-sidebar-border group-data-[state=collapsed]:w-14">
             <div className={cn(
-                "flex items-center space-x-2 p-2",
-                "group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:p-0"
+                "flex items-center h-14",
+                "group-data-[state=expanded]:space-x-2 group-data-[state=expanded]:p-4",
+                "group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:justify-start group-data-[state=collapsed]:px-4"
               )}>
               <Skeleton className={cn(
-                  "h-8 w-8 rounded-full", // Default size for expanded
-                  "group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10" // Larger when collapsed
+                  "h-8 w-8 rounded-full", 
+                  "group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10"
                 )} />
               <div className="flex flex-col space-y-1 group-data-[state=collapsed]:hidden">
                 <Skeleton className="h-4 w-24" />
@@ -256,18 +263,19 @@ export default function AppSidebar() {
         </SidebarFooter>
        )}
        {user && userProfile && !authLoading && !profileLoading && (
-         <SidebarFooter className="p-2 border-t border-sidebar-border">
+         <SidebarFooter className="p-0 border-t border-sidebar-border group-data-[state=collapsed]:w-14">
             <Link 
               href={`/profile/${userProfile.username}`}
               className={cn(
-                "flex items-center space-x-2 p-2 hover:bg-sidebar-accent rounded-md",
-                "group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:p-0" // Ensures footer link is 56x56 when collapsed
+                "flex items-center h-14 hover:bg-sidebar-accent",
+                "group-data-[state=expanded]:space-x-2 group-data-[state=expanded]:p-4",
+                "group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:justify-start group-data-[state=collapsed]:px-4"
               )}
               title={userProfile.profile_name}
             >
               <Avatar className={cn(
-                "h-8 w-8", // Default size for expanded
-                "group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10" // Larger when collapsed
+                "h-8 w-8",
+                "group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10" 
               )}>
                 <AvatarImage src={userProfile.profile_picture ?? undefined} alt={userProfile.profile_name} data-ai-hint="user avatar" />
                 <AvatarFallback className="text-xs">
