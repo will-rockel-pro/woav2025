@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -16,9 +15,9 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
   SidebarTrigger,
-  SidebarMenuSkeleton, // Ensured import
+  SidebarMenuSkeleton,
 } from '@/components/ui/sidebar';
-import { Skeleton } from '@/components/ui/skeleton'; // Ensured import
+import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStatus } from '@/hooks/useAuthStatus';
@@ -246,8 +245,8 @@ export default function AppSidebar() {
                 "group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:p-0"
               )}>
               <Skeleton className={cn(
-                  "h-8 w-8 rounded-full",
-                  "group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10"
+                  "h-8 w-8 rounded-full", // Default size for expanded
+                  "group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10" // Larger when collapsed
                 )} />
               <div className="flex flex-col space-y-1 group-data-[state=collapsed]:hidden">
                 <Skeleton className="h-4 w-24" />
@@ -262,13 +261,13 @@ export default function AppSidebar() {
               href={`/profile/${userProfile.username}`}
               className={cn(
                 "flex items-center space-x-2 p-2 hover:bg-sidebar-accent rounded-md",
-                "group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:p-0"
+                "group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:p-0" // Ensures footer link is 56x56 when collapsed
               )}
               title={userProfile.profile_name}
             >
               <Avatar className={cn(
-                "h-8 w-8",
-                "group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10"
+                "h-8 w-8", // Default size for expanded
+                "group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10" // Larger when collapsed
               )}>
                 <AvatarImage src={userProfile.profile_picture ?? undefined} alt={userProfile.profile_name} data-ai-hint="user avatar" />
                 <AvatarFallback className="text-xs">
