@@ -6,6 +6,7 @@ import { adminDb } from '@/lib/firebaseAdmin'; // Using adminDb
 import type { Collection as CollectionType, UserProfile } from '@/types';
 import { Timestamp } from 'firebase-admin/firestore'; // Use Admin SDK Timestamp
 import CollectionCard from '@/components/CollectionCard';
+import { getCurrentUser } from '@/lib/auth/server'; // Import getCurrentUser
 
 interface EnrichedCollection extends CollectionType {
   ownerDetails?: UserProfile;
@@ -59,6 +60,7 @@ async function getPublicCollections(): Promise<EnrichedCollection[]> {
 
 export default async function HomePage() {
   const publicCollections = await getPublicCollections();
+  const currentUser = await getCurrentUser(); // Get current user's auth state
 
   return (
     <>
@@ -71,16 +73,19 @@ export default async function HomePage() {
           Start building your curated collections today.
         </p>
         <div className="flex space-x-4">
-          <Button asChild size="lg">
-            <LinkFromNext href="/discover">
-              <Search className="mr-2 h-5 w-5" /> My Collections
-            </LinkFromNext>
-          </Button>
-          <Button asChild variant="outline" size="lg">
-            <LinkFromNext href="/auth/signin">
-              <Users className="mr-2 h-5 w-5" /> Join or Sign In
-            </LinkFromNext>
-          </Button>
+          {currentUser ? (
+            <Button asChild size="lg">
+              <LinkFromNext href="/discover">
+                <Search className="mr-2 h-5 w-5" /> My Collections
+              </LinkFromNext>
+            </Button>
+          ) : (
+            <Button asChild variant="outline" size="lg">
+              <LinkFromNext href="/auth/signin">
+                <Users className="mr-2 h-5 w-5" /> Join or Sign In
+              </LinkFromNext>
+            </Button>
+          )}
         </div>
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl">
           <div className="flex flex-col items-center p-6 border rounded-lg shadow-sm">
