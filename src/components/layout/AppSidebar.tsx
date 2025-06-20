@@ -16,14 +16,14 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
   SidebarTrigger,
-  SidebarMenuSkeleton,
+  SidebarMenuSkeleton, // Ensured import
 } from '@/components/ui/sidebar';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/skeleton'; // Ensured import
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStatus } from '@/hooks/useAuthStatus';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, orderBy, doc, getDoc, Timestamp, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, getDoc, Timestamp } from 'firebase/firestore';
 import type { Collection as CollectionType, UserProfile } from '@/types';
 import {
   Lightbulb,
@@ -33,7 +33,6 @@ import {
   PanelLeft,
   UserCircle,
   LogIn,
-  // FolderOpen, // Not used
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -118,13 +117,17 @@ export default function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="hidden md:flex">
       <SidebarHeader className="flex items-center justify-between p-2 group-data-[state=collapsed]:justify-center">
-        <div className="flex items-center">
-          <SidebarTrigger className="mr-2" size="icon"> {/* Ensure button is sized for icon */}
-            <PanelLeft className="h-6 w-6" />
-          </SidebarTrigger>
+        <div className={cn(
+          "flex items-center",
+          "group-data-[state=expanded]:w-full group-data-[state=expanded]:justify-between",
+          "group-data-[state=collapsed]:justify-center"
+        )}>
           <span className="font-headline text-xl font-semibold group-data-[state=collapsed]:hidden">
             Woav
           </span>
+          <SidebarTrigger size="icon">
+            <PanelLeft className="h-6 w-6" />
+          </SidebarTrigger>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -164,7 +167,7 @@ export default function AppSidebar() {
                 <SidebarMenuButton
                   asChild
                   isActive={isActive('/add-link')}
-                  tooltip="New"
+                  tooltip="New Link"
                   size="lg"
                 >
                   <Link href="/add-link">
@@ -187,7 +190,6 @@ export default function AppSidebar() {
                    <SidebarMenuSubItem>
                      <SidebarMenuSubButton asChild isActive={isActive('/create-collection')}>
                         <Link href="/create-collection">
-                            {/* <PlusCircle className="h-3.5 w-3.5" />  Slightly smaller icon for sub-menu */}
                             <span className="group-data-[state=collapsed]:hidden">Create New Collection</span>
                         </Link>
                      </SidebarMenuSubButton>
@@ -237,7 +239,24 @@ export default function AppSidebar() {
           )}
         </SidebarMenu>
       </SidebarContent>
-      {user && userProfile && !authLoading && !profileLoading && (
+      {(authLoading || (user && profileLoading)) && (
+         <SidebarFooter className="p-2 border-t border-sidebar-border">
+            <div className={cn(
+                "flex items-center space-x-2 p-2",
+                "group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:p-0"
+              )}>
+              <Skeleton className={cn(
+                  "h-8 w-8 rounded-full",
+                  "group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10"
+                )} />
+              <div className="flex flex-col space-y-1 group-data-[state=collapsed]:hidden">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+            </div>
+        </SidebarFooter>
+       )}
+       {user && userProfile && !authLoading && !profileLoading && (
          <SidebarFooter className="p-2 border-t border-sidebar-border">
             <Link 
               href={`/profile/${userProfile.username}`}
@@ -247,10 +266,13 @@ export default function AppSidebar() {
               )}
               title={userProfile.profile_name}
             >
-              <Avatar className="h-8 w-8 group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10">
+              <Avatar className={cn(
+                "h-8 w-8",
+                "group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10"
+              )}>
                 <AvatarImage src={userProfile.profile_picture ?? undefined} alt={userProfile.profile_name} data-ai-hint="user avatar" />
                 <AvatarFallback className="text-xs">
-                  {userProfile.profile_name ? userProfile.profile_name.charAt(0).toUpperCase() : <UserCircle className="h-6 w-6" />}
+                  {userProfile.profile_name ? userProfile.profile_name.charAt(0).toUpperCase() : <UserCircle className="h-6 w-6"/>}
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col group-data-[state=collapsed]:hidden">
@@ -260,20 +282,6 @@ export default function AppSidebar() {
             </Link>
         </SidebarFooter>
       )}
-       {(authLoading || (profileLoading && user)) && (
-         <SidebarFooter className="p-2 border-t border-sidebar-border">
-            <div className={cn(
-                "flex items-center space-x-2 p-2",
-                "group-data-[state=collapsed]:justify-center group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:p-0"
-              )}>
-              <Skeleton className="h-8 w-8 rounded-full group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10" />
-              <div className="flex flex-col space-y-1 group-data-[state=collapsed]:hidden">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-3 w-32" />
-              </div>
-            </div>
-        </SidebarFooter>
-       )}
     </Sidebar>
   );
 }
