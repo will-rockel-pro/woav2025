@@ -15,33 +15,38 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
+  SidebarTrigger,
   SidebarMenuSkeleton,
-} from '@/components/ui/sidebar'; // Removed SidebarTrigger
-import { Skeleton } from '@/components/ui/skeleton';
-import Logo from '@/components/Logo';
+} from '@/components/ui/sidebar';
+import { Skeleton } from '@/components/ui/skeleton'; // Added Skeleton import
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { useAuthStatus } from '@/hooks/useAuthStatus';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, orderBy, doc, getDoc, Timestamp } from 'firebase/firestore';
-import type { Collection, UserProfile } from '@/types';
+import { collection, query, where, getDocs, orderBy, doc, getDoc, Timestamp, limit } from 'firebase/firestore';
+import type { Collection as CollectionType, UserProfile } from '@/types';
 import {
-  LayoutDashboard,
+  Lightbulb,
+  Search,
+  PlusCircle,
   Library,
-  Link as LinkIcon,
-  User as UserIcon,
+  PanelLeft,
+  UserCircle,
+  LogIn,
   FolderOpen,
-  LogOut,
-  FilePlus,
-  // PanelLeft removed as it's no longer used here
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const READING_LIST_TITLE = "Reading List";
 
 export default function AppSidebar() {
   const pathname = usePathname();
   const { user, loading: authLoading } = useAuthStatus();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
-  const [collections, setCollections] = useState<Collection[]>([]);
+  const [collections, setCollections] = useState<CollectionType[]>([]);
   const [collectionsLoading, setCollectionsLoading] = useState(true);
+  const [readingListCollection, setReadingListCollection] = useState<CollectionType | null>(null);
 
   useEffect(() => {
     if (user && !authLoading) {
@@ -69,26 +74,40 @@ export default function AppSidebar() {
   useEffect(() => {
     if (user && !authLoading) {
       setCollectionsLoading(true);
-      const q = query(
-        collection(db, 'collections'),
-        where('owner', '==', user.uid),
-        orderBy('title', 'asc')
-      );
-      const unsubscribe = getDocs(q)
-        .then((querySnapshot) => {
-          const fetchedCollections = querySnapshot.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() } as Collection)
+      const fetchCollections = async () => {
+        try {
+          const qCollections = query(
+            collection(db, 'collections'),
+            where('owner', '==', user.uid),
+            orderBy('title', 'asc')
           );
+          const querySnapshot = await getDocs(qCollections);
+          
+          const fetchedCollections: CollectionType[] = [];
+          let foundReadingList: CollectionType | null = null;
+
+          querySnapshot.docs.forEach((doc) => {
+            const colData = { id: doc.id, ...doc.data() } as CollectionType;
+            if (colData.title === READING_LIST_TITLE) {
+              foundReadingList = colData;
+            } else {
+              fetchedCollections.push(colData);
+            }
+          });
+
           setCollections(fetchedCollections);
-        })
-        .catch((error) => {
+          setReadingListCollection(foundReadingList);
+
+        } catch (error) {
           console.error('Error fetching collections for sidebar:', error);
-        })
-        .finally(() => {
+        } finally {
           setCollectionsLoading(false);
-        });
+        }
+      };
+      fetchCollections();
     } else if (!user && !authLoading) {
       setCollections([]);
+      setReadingListCollection(null);
       setCollectionsLoading(false);
     }
   }, [user, authLoading]);
@@ -97,18 +116,15 @@ export default function AppSidebar() {
   const isCollectionsActive = () => pathname.startsWith('/collections/') || pathname === '/create-collection';
 
   return (
-    // Changed collapsible to "offcanvas" for desktop
-    // The "group" class is on the SidebarProvider's div, so Logo should still react correctly
-    <Sidebar collapsible="offcanvas" className="hidden md:flex">
-      <SidebarHeader>
-        {/* SidebarHeader now only contains the Logo */}
-        <div className={cn(
-          "flex items-center w-full p-0", // Removed fixed h-10, ensure padding is handled or removed if not needed
-          // justify-center might be good if logo is just icon, justify-start if text visible
-          "group-data-[state=expanded]:justify-start", 
-          "group-data-[state=collapsed]:justify-center" // Sidebar is offcanvas, so this state applies when it's hidden
-        )}>
-          <Logo />
+    <Sidebar collapsible="icon" className="hidden md:flex">
+      <SidebarHeader className="flex items-center justify-between p-2 group-data-[state=collapsed]:justify-center">
+        <div className="flex items-center">
+          <SidebarTrigger className="mr-2">
+            <PanelLeft />
+          </SidebarTrigger>
+          <span className="font-headline text-xl font-semibold group-data-[state=collapsed]:hidden">
+            Woav
+          </span>
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -120,35 +136,62 @@ export default function AppSidebar() {
               tooltip="Discover"
             >
               <Link href="/discover">
-                <LayoutDashboard />
-                <span>Discover</span>
+                <Lightbulb />
+                <span className="group-data-[state=collapsed]:hidden">Discover</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
 
           {user && !authLoading && (
             <>
+              {readingListCollection && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(`/collections/${readingListCollection.id}`)}
+                    tooltip="Reading List"
+                  >
+                    <Link href={`/collections/${readingListCollection.id}`}>
+                      <Search />
+                      <span className="group-data-[state=collapsed]:hidden">Reading List</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  isActive={isCollectionsActive()}
-                  tooltip="My Collections"
+                  asChild
+                  isActive={isActive('/add-link')}
+                  tooltip="New"
+                >
+                  <Link href="/add-link">
+                    <PlusCircle />
+                    <span className="group-data-[state=collapsed]:hidden">New</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isCollectionsActive() && (!readingListCollection || pathname !== `/collections/${readingListCollection.id}`)}
+                  tooltip="Collections"
                 >
                   <Library />
-                  <span>My Collections</span>
+                  <span className="group-data-[state=collapsed]:hidden">Collections</span>
                 </SidebarMenuButton>
                 <SidebarMenuSub>
-                  <SidebarMenuSubItem>
+                   <SidebarMenuSubItem>
                      <SidebarMenuSubButton asChild isActive={isActive('/create-collection')}>
                         <Link href="/create-collection">
-                            <FilePlus />
-                            <span>Create New</span>
+                            {/* <PlusCircle className="h-3.5 w-3.5" />  Slightly smaller icon for sub-menu */}
+                            <span className="group-data-[state=collapsed]:hidden">Create New Collection</span>
                         </Link>
                      </SidebarMenuSubButton>
                   </SidebarMenuSubItem>
                   {collectionsLoading ? (
                     <>
-                      <SidebarMenuSkeleton showIcon />
-                      <SidebarMenuSkeleton showIcon />
+                      <SidebarMenuSkeleton showIcon={false} />
+                      <SidebarMenuSkeleton showIcon={false} />
                     </>
                   ) : (
                     collections.map((col) => (
@@ -157,42 +200,19 @@ export default function AppSidebar() {
                           asChild
                           isActive={isActive(`/collections/${col.id}`)}
                         >
-                          <Link href={`/collections/${col.id}`}>
-                            <FolderOpen />
-                            <span>{col.title}</span>
+                          <Link href={`/collections/${col.id}`} className="flex justify-between items-center w-full">
+                            <span className="truncate group-data-[state=collapsed]:hidden">{col.title}</span>
+                            {!col.published && (
+                              <Badge variant="secondary" className="ml-2 text-xs h-fit px-1.5 py-0.5 group-data-[state=collapsed]:hidden shrink-0">
+                                private
+                              </Badge>
+                            )}
                           </Link>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     ))
                   )}
                 </SidebarMenuSub>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive('/add-link')}
-                  tooltip="Add New Link"
-                >
-                  <Link href="/add-link">
-                    <LinkIcon />
-                    <span>Add New Link</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  disabled={profileLoading || !userProfile}
-                  isActive={userProfile ? isActive(`/profile/${userProfile.username}`) : false}
-                  tooltip="My Profile"
-                >
-                  <Link href={userProfile ? `/profile/${userProfile.username}` : '#'}>
-                    <UserIcon />
-                    <span>My Profile</span>
-                  </Link>
-                </SidebarMenuButton>
               </SidebarMenuItem>
             </>
           )}
@@ -204,18 +224,45 @@ export default function AppSidebar() {
                     tooltip="Sign In"
                     >
                     <Link href="/auth/signin">
-                        <LogOut />
-                        <span>Sign In</span>
+                        <LogIn />
+                        <span className="group-data-[state=collapsed]:hidden">Sign In</span>
                     </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
           )}
         </SidebarMenu>
       </SidebarContent>
-      {user && !authLoading && (
-         <SidebarFooter className="p-2">
+      {user && userProfile && !authLoading && !profileLoading && (
+         <SidebarFooter className="p-2 border-t border-sidebar-border">
+            <Link 
+              href={`/profile/${userProfile.username}`}
+              className="flex items-center space-x-2 p-2 hover:bg-sidebar-accent rounded-md group-data-[state=collapsed]:justify-center"
+              title={userProfile.profile_name}
+            >
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={userProfile.profile_picture ?? undefined} alt={userProfile.profile_name} data-ai-hint="user avatar" />
+                <AvatarFallback className="text-xs">
+                  {userProfile.profile_name ? userProfile.profile_name.charAt(0).toUpperCase() : <UserCircle />}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col group-data-[state=collapsed]:hidden">
+                <span className="text-sm font-medium text-sidebar-foreground truncate">{userProfile.profile_name}</span>
+                <span className="text-xs text-sidebar-foreground/70 truncate">{user.email}</span>
+              </div>
+            </Link>
         </SidebarFooter>
       )}
+       {(authLoading || profileLoading && user) && (
+         <SidebarFooter className="p-2 border-t border-sidebar-border">
+            <div className="flex items-center space-x-2 p-2 group-data-[state=collapsed]:justify-center">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <div className="flex flex-col space-y-1 group-data-[state=collapsed]:hidden">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+            </div>
+        </SidebarFooter>
+       )}
     </Sidebar>
   );
 }
