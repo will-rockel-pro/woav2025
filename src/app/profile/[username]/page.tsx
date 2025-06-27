@@ -62,6 +62,13 @@ export default function UserProfilePage() {
     fetchProfileData();
   }, [username]);
 
+  const handleProfilePictureUpdate = (newImageUrl: string) => {
+    setProfileUser(prevProfile => {
+      if (!prevProfile) return null;
+      return { ...prevProfile, profile_picture: newImageUrl };
+    });
+  };
+
   if (authLoading || loadingProfile) {
     return (
       <div className="space-y-10">
@@ -139,6 +146,7 @@ export default function UserProfilePage() {
               userId={profileUser.uuid}
               currentImageUrl={profileUser.profile_picture}
               userName={profileUser.profile_name}
+              onUploadSuccess={handleProfilePictureUpdate}
             />
           </CardContent>
         )}

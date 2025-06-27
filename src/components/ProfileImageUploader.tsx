@@ -18,9 +18,10 @@ interface ProfileImageUploaderProps {
   userId: string;
   currentImageUrl?: string | null;
   userName?: string;
+  onUploadSuccess: (newImageUrl: string) => void;
 }
 
-export default function ProfileImageUploader({ userId, currentImageUrl, userName }: ProfileImageUploaderProps) {
+export default function ProfileImageUploader({ userId, currentImageUrl, userName, onUploadSuccess }: ProfileImageUploaderProps) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -57,6 +58,8 @@ export default function ProfileImageUploader({ userId, currentImageUrl, userName
       await updateDoc(userDocRef, {
         profile_picture: downloadURL,
       });
+
+      onUploadSuccess(downloadURL); // Notify parent component of the new URL
 
       setImageFile(null);
       setPreviewUrl(null);
