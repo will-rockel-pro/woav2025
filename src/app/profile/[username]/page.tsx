@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -12,6 +11,7 @@ import { UserCircle, Library, Info } from 'lucide-react';
 import UserProfileCollections from '@/components/UserProfileCollections';
 import { useAuthStatus } from '@/hooks/useAuthStatus'; // For client-side auth check
 import { Skeleton } from '@/components/ui/skeleton';
+import ProfileImageUploader from '@/components/ProfileImageUploader';
 
 export default function UserProfilePage() {
   const params = useParams();
@@ -133,7 +133,15 @@ export default function UserProfilePage() {
           <CardTitle className="text-3xl sm:text-4xl font-headline">{profileUser.profile_name}</CardTitle>
           <CardDescription className="text-lg text-muted-foreground">@{profileUser.username}</CardDescription>
         </CardHeader>
-        {/* ProfileImageUploader and ProfileBioEditor would be conditionally rendered here if isOwnProfile is true, once re-added */}
+        {isOwnProfile && (
+          <CardContent className="border-t p-6">
+            <ProfileImageUploader
+              userId={profileUser.uuid}
+              currentImageUrl={profileUser.profile_picture}
+              userName={profileUser.profile_name}
+            />
+          </CardContent>
+        )}
       </Card>
 
       <section>
