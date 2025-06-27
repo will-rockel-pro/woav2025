@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -45,6 +46,11 @@ export default function AppSidebar() {
   const [collections, setCollections] = useState<CollectionType[]>([]);
   const [collectionsLoading, setCollectionsLoading] = useState(true);
   const [readingListCollection, setReadingListCollection] = useState<CollectionType | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     if (user && !authLoading) {
@@ -113,6 +119,49 @@ export default function AppSidebar() {
   const isActive = (path: string) => pathname === path;
   const isCollectionsActive = () => pathname.startsWith('/collections/') || pathname === '/create-collection';
 
+  const UnauthenticatedMenu = () => (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+          asChild
+          isActive={isActive('/auth/signin')}
+          tooltip="Sign In"
+          size="lg"
+          >
+          <Link href="/auth/signin">
+              <LogIn className="h-6 w-6" />
+              <span className="group-data-[state=collapsed]:hidden">Sign In</span>
+          </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+
+  const LoadingMenu = () => (
+    <>
+      <SidebarMenuSkeleton showIcon={true} />
+      <SidebarMenuSkeleton showIcon={true} />
+      <SidebarMenuSkeleton showIcon={true} />
+    </>
+  );
+
+  const LoadingFooter = () => (
+    <SidebarFooter className="p-0 border-t border-sidebar-border group-data-[state=collapsed]:w-14">
+       <div className={cn(
+           "flex items-center h-14",
+           "group-data-[state=expanded]:space-x-2 group-data-[state=expanded]:p-4",
+           "group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:justify-start group-data-[state=collapsed]:px-4"
+         )}>
+         <Skeleton className={cn(
+             "h-8 w-8 rounded-full", 
+             "group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10"
+           )} />
+         <div className="flex flex-col space-y-1 group-data-[state=collapsed]:hidden">
+           <Skeleton className="h-4 w-24" />
+           <Skeleton className="h-3 w-32" />
+         </div>
+       </div>
+   </SidebarFooter>
+  );
+
   return (
     <Sidebar collapsible="icon" className="hidden md:flex">
       <SidebarHeader className="border-b border-sidebar-border p-0">
@@ -150,7 +199,14 @@ export default function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
 
-          {user && !authLoading && (
+          {/* Render unauthenticated state on server and initial client render */}
+          {!isClient && <UnauthenticatedMenu />}
+          
+          {/* Render loading state only on client */}
+          {isClient && authLoading && <LoadingMenu />}
+
+          {/* Render authenticated state only on client after load */}
+          {isClient && !authLoading && user && (
             <>
               {readingListCollection && (
                 <SidebarMenuItem>
@@ -226,42 +282,15 @@ export default function AppSidebar() {
               </SidebarMenuItem>
             </>
           )}
-          {!user && !authLoading && (
-             <SidebarMenuItem>
-                <SidebarMenuButton
-                    asChild
-                    isActive={isActive('/auth/signin')}
-                    tooltip="Sign In"
-                    size="lg"
-                    >
-                    <Link href="/auth/signin">
-                        <LogIn className="h-6 w-6" />
-                        <span className="group-data-[state=collapsed]:hidden">Sign In</span>
-                    </Link>
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
+
+          {/* Render unauthenticated state on client after load */}
+          {isClient && !authLoading && !user && <UnauthenticatedMenu />}
         </SidebarMenu>
       </SidebarContent>
-       {(authLoading || (user && profileLoading)) && (
-         <SidebarFooter className="p-0 border-t border-sidebar-border group-data-[state=collapsed]:w-14">
-            <div className={cn(
-                "flex items-center h-14",
-                "group-data-[state=expanded]:space-x-2 group-data-[state=expanded]:p-4",
-                "group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:justify-start group-data-[state=collapsed]:px-4"
-              )}>
-              <Skeleton className={cn(
-                  "h-8 w-8 rounded-full", 
-                  "group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10"
-                )} />
-              <div className="flex flex-col space-y-1 group-data-[state=collapsed]:hidden">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-3 w-32" />
-              </div>
-            </div>
-        </SidebarFooter>
-       )}
-       {user && userProfile && !authLoading && !profileLoading && (
+       
+       {isClient && (authLoading || (user && profileLoading)) && <LoadingFooter />}
+
+       {isClient && user && userProfile && !authLoading && !profileLoading && (
          <SidebarFooter className="p-0 border-t border-sidebar-border group-data-[state=collapsed]:w-14">
             <Link 
               href={`/profile/${userProfile.username}`}
