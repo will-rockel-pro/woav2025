@@ -119,47 +119,21 @@ export default function AppSidebar() {
   const isActive = (path: string) => pathname === path;
   const isCollectionsActive = () => pathname.startsWith('/collections/') || pathname === '/create-collection';
 
-  const UnauthenticatedMenu = () => (
-    <SidebarMenuItem>
-      <SidebarMenuButton
-          asChild
-          isActive={isActive('/auth/signin')}
-          tooltip="Sign In"
-          size="lg"
-          >
-          <Link href="/auth/signin">
-              <LogIn className="h-6 w-6" />
-              <span className="group-data-[state=collapsed]:hidden">Sign In</span>
-          </Link>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
-
-  const LoadingMenu = () => (
-    <>
-      <SidebarMenuSkeleton showIcon={true} />
-      <SidebarMenuSkeleton showIcon={true} />
-      <SidebarMenuSkeleton showIcon={true} />
-    </>
-  );
-
   const LoadingFooter = () => (
-    <SidebarFooter className="p-0 border-t border-sidebar-border group-data-[state=collapsed]:w-14">
-       <div className={cn(
-           "flex items-center h-14",
-           "group-data-[state=expanded]:space-x-2 group-data-[state=expanded]:p-4",
-           "group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:justify-start group-data-[state=collapsed]:px-4"
-         )}>
-         <Skeleton className={cn(
-             "h-8 w-8 rounded-full", 
-             "group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10"
-           )} />
-         <div className="flex flex-col space-y-1 group-data-[state=collapsed]:hidden">
-           <Skeleton className="h-4 w-24" />
-           <Skeleton className="h-3 w-32" />
-         </div>
-       </div>
-   </SidebarFooter>
+    <div className={cn(
+        "flex items-center h-14",
+        "group-data-[state=expanded]:space-x-2 group-data-[state=expanded]:p-4",
+        "group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:justify-start group-data-[state=collapsed]:px-4"
+      )}>
+      <Skeleton className={cn(
+          "h-8 w-8 rounded-full", 
+          "group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10"
+        )} />
+      <div className="flex flex-col space-y-1 group-data-[state=collapsed]:hidden">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-3 w-32" />
+      </div>
+    </div>
   );
 
   return (
@@ -199,124 +173,145 @@ export default function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
 
-          {/* Render unauthenticated state on server and initial client render */}
-          {!isClient && <UnauthenticatedMenu />}
-          
-          {/* Render loading state only on client */}
-          {isClient && authLoading && <LoadingMenu />}
-
-          {/* Render authenticated state only on client after load */}
-          {isClient && !authLoading && user && (
+          {isClient && (
             <>
-              {readingListCollection && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(`/collections/${readingListCollection.id}`)}
-                    tooltip="Reading List"
-                    size="lg"
-                  >
-                    <Link href={`/collections/${readingListCollection.id}`}>
-                      <Search className="h-6 w-6" />
-                      <span className="group-data-[state=collapsed]:hidden">Reading List</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+              {authLoading && (
+                <>
+                  <SidebarMenuSkeleton showIcon={true} />
+                  <SidebarMenuSkeleton showIcon={true} />
+                  <SidebarMenuSkeleton showIcon={true} />
+                </>
               )}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive('/add-link')}
-                  tooltip="New Link"
-                  size="lg"
-                >
-                  <Link href="/add-link">
-                    <PlusCircle className="h-6 w-6" />
-                    <span className="group-data-[state=collapsed]:hidden">New</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={isCollectionsActive() && (!readingListCollection || pathname !== `/collections/${readingListCollection.id}`)}
-                  tooltip="Collections"
-                  size="lg"
-                >
-                  <Library className="h-6 w-6" />
-                  <span className="group-data-[state=collapsed]:hidden">Collections</span>
-                </SidebarMenuButton>
-                <SidebarMenuSub>
-                   <SidebarMenuSubItem>
-                     <SidebarMenuSubButton asChild isActive={isActive('/create-collection')}>
-                        <Link href="/create-collection">
-                            <span className="group-data-[state=collapsed]:hidden">Create New Collection</span>
-                        </Link>
-                     </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                  {collectionsLoading ? (
-                    <>
-                      <SidebarMenuSkeleton showIcon={false} />
-                      <SidebarMenuSkeleton showIcon={false} />
-                    </>
-                  ) : (
-                    collections.map((col) => (
-                      <SidebarMenuSubItem key={col.id}>
-                        <SidebarMenuSubButton
-                          asChild
-                          isActive={isActive(`/collections/${col.id}`)}
+              {!authLoading && !user && (
+                 <SidebarMenuItem>
+                    <SidebarMenuButton
+                        asChild
+                        isActive={isActive('/auth/signin')}
+                        tooltip="Sign In"
+                        size="lg"
                         >
-                          <Link href={`/collections/${col.id}`} className="flex justify-between items-center w-full">
-                            <span className="truncate group-data-[state=collapsed]:hidden">{col.title}</span>
-                            {!col.published && (
-                              <Badge variant="secondary" className="ml-2 text-xs h-fit px-1.5 py-0.5 group-data-[state=collapsed]:hidden shrink-0">
-                                private
-                              </Badge>
-                            )}
-                          </Link>
+                        <Link href="/auth/signin">
+                            <LogIn className="h-6 w-6" />
+                            <span className="group-data-[state=collapsed]:hidden">Sign In</span>
+                        </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+              )}
+              {!authLoading && user && (
+                <>
+                  {readingListCollection && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive(`/collections/${readingListCollection.id}`)}
+                        tooltip="Reading List"
+                        size="lg"
+                      >
+                        <Link href={`/collections/${readingListCollection.id}`}>
+                          <Search className="h-6 w-6" />
+                          <span className="group-data-[state=collapsed]:hidden">Reading List</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive('/add-link')}
+                      tooltip="New Link"
+                      size="lg"
+                    >
+                      <Link href="/add-link">
+                        <PlusCircle className="h-6 w-6" />
+                        <span className="group-data-[state=collapsed]:hidden">New</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      isActive={isCollectionsActive() && (!readingListCollection || pathname !== `/collections/${readingListCollection.id}`)}
+                      tooltip="Collections"
+                      size="lg"
+                    >
+                      <Library className="h-6 w-6" />
+                      <span className="group-data-[state=collapsed]:hidden">Collections</span>
+                    </SidebarMenuButton>
+                    <SidebarMenuSub>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton asChild isActive={isActive('/create-collection')}>
+                            <Link href="/create-collection">
+                                <span className="group-data-[state=collapsed]:hidden">Create New Collection</span>
+                            </Link>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
-                    ))
-                  )}
-                </SidebarMenuSub>
-              </SidebarMenuItem>
+                      {collectionsLoading ? (
+                        <>
+                          <SidebarMenuSkeleton showIcon={false} />
+                          <SidebarMenuSkeleton showIcon={false} />
+                        </>
+                      ) : (
+                        collections.map((col) => (
+                          <SidebarMenuSubItem key={col.id}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={isActive(`/collections/${col.id}`)}
+                            >
+                              <Link href={`/collections/${col.id}`} className="flex justify-between items-center w-full">
+                                <span className="truncate group-data-[state=collapsed]:hidden">{col.title}</span>
+                                {!col.published && (
+                                  <Badge variant="secondary" className="ml-2 text-xs h-fit px-1.5 py-0.5 group-data-[state=collapsed]:hidden shrink-0">
+                                    private
+                                  </Badge>
+                                )}
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))
+                      )}
+                    </SidebarMenuSub>
+                  </SidebarMenuItem>
+                </>
+              )}
             </>
           )}
-
-          {/* Render unauthenticated state on client after load */}
-          {isClient && !authLoading && !user && <UnauthenticatedMenu />}
         </SidebarMenu>
       </SidebarContent>
        
-       {isClient && (authLoading || (user && profileLoading)) && <LoadingFooter />}
-
-       {isClient && user && userProfile && !authLoading && !profileLoading && (
-         <SidebarFooter className="p-0 border-t border-sidebar-border group-data-[state=collapsed]:w-14">
-            <Link 
-              href={`/profile/${userProfile.username}`}
-              className={cn(
-                "flex items-center h-14 hover:bg-sidebar-accent",
-                "group-data-[state=expanded]:space-x-2 group-data-[state=expanded]:p-4",
-                "group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:justify-start group-data-[state=collapsed]:px-4"
-              )}
-              title={userProfile.profile_name}
-            >
-              <Avatar className={cn(
-                "h-8 w-8",
-                "group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10" 
-              )}>
-                <AvatarImage src={userProfile.profile_picture ?? undefined} alt={userProfile.profile_name} data-ai-hint="user avatar" />
-                <AvatarFallback className="text-xs">
-                  {userProfile.profile_name ? userProfile.profile_name.charAt(0).toUpperCase() : <UserCircle className="h-6 w-6"/>}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col group-data-[state=collapsed]:hidden">
-                <span className="text-sm font-medium text-sidebar-foreground truncate">{userProfile.profile_name}</span>
-                <span className="text-xs text-sidebar-foreground/70 truncate">{user.email}</span>
-              </div>
-            </Link>
-        </SidebarFooter>
-      )}
+      <SidebarFooter className="p-0 border-t border-sidebar-border group-data-[state=collapsed]:w-14">
+        {isClient && (
+          <>
+            {(authLoading || (user && profileLoading)) && <LoadingFooter />}
+            {!authLoading && user && userProfile && (
+              <Link 
+                href={`/profile/${userProfile.username}`}
+                className={cn(
+                  "flex items-center h-14 hover:bg-sidebar-accent",
+                  "group-data-[state=expanded]:space-x-2 group-data-[state=expanded]:p-4",
+                  "group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:justify-start group-data-[state=collapsed]:px-4"
+                )}
+                title={userProfile.profile_name}
+              >
+                <Avatar className={cn(
+                  "h-8 w-8",
+                  "group-data-[state=collapsed]:h-10 group-data-[state=collapsed]:w-10" 
+                )}>
+                  <AvatarImage src={userProfile.profile_picture ?? undefined} alt={userProfile.profile_name} data-ai-hint="user avatar" />
+                  <AvatarFallback className="text-xs">
+                    {userProfile.profile_name ? userProfile.profile_name.charAt(0).toUpperCase() : <UserCircle className="h-6 w-6"/>}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col group-data-[state=collapsed]:hidden">
+                  <span className="text-sm font-medium text-sidebar-foreground truncate">{userProfile.profile_name}</span>
+                  <span className="text-xs text-sidebar-foreground/70 truncate">{user.email}</span>
+                </div>
+              </Link>
+            )}
+          </>
+        )}
+       </SidebarFooter>
     </Sidebar>
   );
 }
+
+    
