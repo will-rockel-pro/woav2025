@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -249,7 +248,7 @@ export default function AppSidebar() {
             <div className={cn(
                 "flex items-center h-14",
                 "group-data-[state=expanded]:space-x-2 group-data-[state=expanded]:p-4",
-                "group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:justify-start group-data-[state=collapsed]:px-4"
+                "group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:justify-start group-data-[state=collapsed]:px-4"
               )}>
               <Skeleton className={cn(
                   "h-8 w-8 rounded-full", 
@@ -269,7 +268,7 @@ export default function AppSidebar() {
               className={cn(
                 "flex items-center h-14 hover:bg-sidebar-accent",
                 "group-data-[state=expanded]:space-x-2 group-data-[state=expanded]:p-4",
-                "group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:justify-start group-data-[state=collapsed]:px-4"
+                "group-data-[state=collapsed]:w-14 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:justify-start group-data-[state=collapsed]:px-4"
               )}
               title={userProfile.profile_name}
             >
