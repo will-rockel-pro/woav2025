@@ -1,67 +1,70 @@
 
-import LinkFromNext from 'next/link'; // Renamed to avoid conflict
+'use client';
+
+import { useState, useEffect } from 'react';
+import LinkFromNext from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Bookmark, Search, Users, Library, Info } from 'lucide-react';
-import { adminDb } from '@/lib/firebaseAdmin'; // Using adminDb
 import type { Collection as CollectionType, UserProfile } from '@/types';
-import { Timestamp } from 'firebase-admin/firestore'; // Use Admin SDK Timestamp
+import { Timestamp, collection, query, where, getDocs, limit, orderBy, doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase'; // Use client-side db
 import CollectionCard from '@/components/CollectionCard';
-import { getCurrentUser } from '@/lib/auth/server'; // Import getCurrentUser
+import { useAuthStatus } from '@/hooks/useAuthStatus';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface EnrichedCollection extends CollectionType {
   ownerDetails?: UserProfile;
 }
 
-async function getPublicCollections(): Promise<EnrichedCollection[]> {
-  // If adminDb is not available (e.g., in a build environment without credentials), return empty.
-  if (!adminDb || typeof adminDb.collection !== 'function' || !process.env.FIREBASE_SERVICE_ACCOUNT_KEY_JSON) {
-    console.warn("[HomePage getPublicCollections] Firebase Admin SDK not available or configured. Returning empty array for build process.");
-    return [];
-  }
+export default function HomePage() {
+  const { user, loading: authLoading } = useAuthStatus();
+  const [publicCollections, setPublicCollections] = useState<EnrichedCollection[]>([]);
+  const [loadingCollections, setLoadingCollections] = useState(true);
 
-  try {
-    const collectionsQuery = adminDb.collection('collections')
-      .where('published', '==', true)
-      .orderBy('createdAt', 'desc')
-      .limit(20);
-    
-    const querySnapshot = await collectionsQuery.get();
+  useEffect(() => {
+    const getPublicCollections = async (): Promise<void> => {
+      setLoadingCollections(true);
+      try {
+        const collectionsQuery = query(
+          collection(db, 'collections'),
+          where('published', '==', true),
+          orderBy('createdAt', 'desc'),
+          limit(20)
+        );
+        const querySnapshot = await getDocs(collectionsQuery);
 
-    const collections: EnrichedCollection[] = [];
-    for (const docSnapshot of querySnapshot.docs) {
-      const colData = docSnapshot.data() as Omit<CollectionType, 'id' | 'createdAt' | 'updatedAt'> & { createdAt: Timestamp, updatedAt: Timestamp };
-      let ownerDetails: UserProfile | undefined = undefined;
+        const collectionsPromises = querySnapshot.docs.map(async (docSnapshot) => {
+          const colData = docSnapshot.data() as Omit<CollectionType, 'id' | 'createdAt' | 'updatedAt'> & { createdAt: Timestamp, updatedAt: Timestamp };
+          let ownerDetails: UserProfile | undefined = undefined;
 
-      if (colData.owner) {
-         const userProfileDocRef = adminDb.collection('users').doc(colData.owner);
-         const userProfileDocSnap = await userProfileDocRef.get();
-         if (userProfileDocSnap.exists) {
-             ownerDetails = userProfileDocSnap.data() as UserProfile;
-         } else {
-            console.warn(`[HomePage] Owner profile for UID ${colData.owner} not found for collection ${docSnapshot.id}.`);
-         }
-      } else {
-        console.warn(`[HomePage] Collection ${docSnapshot.id} is missing an owner UID.`);
+          if (colData.owner) {
+            const userProfileDocRef = doc(db, 'users', colData.owner);
+            const userProfileDocSnap = await getDoc(userProfileDocRef);
+            if (userProfileDocSnap.exists()) {
+              ownerDetails = userProfileDocSnap.data() as UserProfile;
+            }
+          }
+
+          return {
+            ...colData,
+            id: docSnapshot.id,
+            createdAt: colData.createdAt,
+            updatedAt: colData.updatedAt,
+            ownerDetails,
+          };
+        });
+
+        const collections = await Promise.all(collectionsPromises);
+        setPublicCollections(collections);
+      } catch (error: any) {
+        console.error("[HomePage] Error fetching public collections:", error.message);
+      } finally {
+        setLoadingCollections(false);
       }
+    };
 
-      collections.push({
-        ...colData,
-        id: docSnapshot.id,
-        createdAt: colData.createdAt, 
-        updatedAt: colData.updatedAt, 
-        ownerDetails
-      });
-    }
-    return collections;
-  } catch (error: any) {
-    console.error("[HomePage getPublicCollections] Error fetching public collections:", error.message, error.code, error.stack);
-    return [];
-  }
-}
-
-export default async function HomePage() {
-  const publicCollections = await getPublicCollections();
-  const currentUser = await getCurrentUser(); // Get current user's auth state
+    getPublicCollections();
+  }, []);
 
   return (
     <>
@@ -74,7 +77,9 @@ export default async function HomePage() {
           Start building your curated collections today.
         </p>
         <div className="flex space-x-4">
-          {currentUser ? (
+          {authLoading ? (
+            <Skeleton className="h-12 w-48" />
+          ) : user ? (
             <Button asChild size="lg">
               <LinkFromNext href="/discover">
                 <Search className="mr-2 h-5 w-5" /> My Collections
@@ -116,7 +121,17 @@ export default async function HomePage() {
               Discover what others are curating from around the web.
             </p>
         </div>
-        {publicCollections.length > 0 ? (
+        {loadingCollections ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="border rounded-lg shadow-md p-4 space-y-3">
+                <Skeleton className="h-48 w-full rounded-md" />
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ))}
+          </div>
+        ) : publicCollections.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {publicCollections.map((col, index) => (
               <CollectionCard key={col.id} collection={col} owner={col.ownerDetails} priority={index < 4} />
@@ -125,7 +140,7 @@ export default async function HomePage() {
         ) : (
           <div className="text-center py-10 border rounded-lg shadow-sm bg-card flex flex-col items-center">
             <Info className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground text-lg">No public collections found yet, or there was an issue fetching them.</p>
+            <p className="text-muted-foreground text-lg">No public collections found yet.</p>
             <p className="text-sm text-muted-foreground mt-1">Check back soon or create the first public collection!</p>
           </div>
         )}
