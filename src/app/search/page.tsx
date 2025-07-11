@@ -248,4 +248,3 @@ function LinkCardSkeleton() {
     </div>
   );
 }
-
