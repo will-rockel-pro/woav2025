@@ -13,8 +13,9 @@ interface EnrichedCollection extends CollectionType {
 }
 
 async function getPublicCollections(): Promise<EnrichedCollection[]> {
-  if (!adminDb || typeof adminDb.collection !== 'function') {
-    console.error("[HomePage getPublicCollections] adminDb is not available or not a Firestore instance. Cannot fetch public collections.");
+  // If adminDb is not available (e.g., in a build environment without credentials), return empty.
+  if (!adminDb || typeof adminDb.collection !== 'function' || !process.env.FIREBASE_SERVICE_ACCOUNT_KEY_JSON) {
+    console.warn("[HomePage getPublicCollections] Firebase Admin SDK not available or configured. Returning empty array for build process.");
     return [];
   }
 
