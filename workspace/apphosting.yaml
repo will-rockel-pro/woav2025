@@ -1,0 +1,5 @@
+# This file is intentionally left blank.
+# Environment variables are now handled directly by the Next.js build process
+# and are passed in during deployment from your local .env file.
+# Server-side functionality now gracefully handles the absence of admin credentials
+# during the build step.
