@@ -9,9 +9,8 @@ let adminAuth: admin.auth.Auth | undefined;
 let adminStorage: admin.storage.Storage | undefined;
 
 if (!admin.apps.length) {
-  if (!serviceAccountKeyJson) {
-    console.warn('[firebaseAdmin] FIREBASE_SERVICE_ACCOUNT_KEY_JSON is not set. Skipping Admin SDK initialization. This is expected during client-side rendering and build processes without secrets.');
-  } else {
+  // Check if the serviceAccountKeyJson is present and looks like a JSON object before trying to parse.
+  if (serviceAccountKeyJson && serviceAccountKeyJson.trim().startsWith('{')) {
     try {
       const serviceAccount = JSON.parse(serviceAccountKeyJson);
       adminApp = admin.initializeApp({
@@ -24,9 +23,13 @@ if (!admin.apps.length) {
         console.error('[firebaseAdmin] This might be due to an invalid JSON string in FIREBASE_SERVICE_ACCOUNT_KEY_JSON.');
       }
     }
+  } else {
+    // This will be the case during the build process on App Hosting if .env is not set up.
+    console.warn('[firebaseAdmin] FIREBASE_SERVICE_ACCOUNT_KEY_JSON is not a valid JSON object or is not set. Skipping Admin SDK initialization. This is expected during client-side rendering and some build processes.');
   }
 } else {
   adminApp = admin.app();
+  console.log('[firebaseAdmin] Reusing existing Firebase Admin SDK app instance.');
 }
 
 if (adminApp) {
