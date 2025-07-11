@@ -1,7 +1,63 @@
-# Settings to manage and configure a Firebase App Hosting backend.
-# https://firebase.google.com/docs/app-hosting/configure
-
+# Settings for Backend (on Cloud Run).
+# See https://firebase.google.com/docs/app-hosting/configure#cloud-run
 runConfig:
-  # Increase this value if you'd like to automatically spin up
-  # more instances in response to increased traffic.
-  maxInstances: 1
+  minInstances: 0
+  # maxInstances: 100
+  # concurrency: 80
+  # cpu: 1
+  # memoryMiB: 512
+
+# Environment variables and secrets.
+# See https://firebase.google.com/docs/app-hosting/configure
+env:
+  # Instructions:
+  # 1. You MUST create a .env file in your project root (NOT .env.local).
+  # 2. Add your Firebase Service Account JSON to it like this:
+  #    FIREBASE_SERVICE_ACCOUNT_KEY_JSON='{ "type": "service_account", ... }'
+  #
+  # 3. Add your client-side keys to the .env file as well:
+  #    NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+  #    NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+  #    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
+  #    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+  #    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+  #    NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+  #
+  # 4. The values below are placeholders. The build system will automatically
+  #    substitute them with the values from your .env file during deployment.
+
+  - variable: FIREBASE_SERVICE_ACCOUNT_KEY_JSON
+    value: ${FIREBASE_SERVICE_ACCOUNT_KEY_JSON}
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: ${NEXT_PUBLIC_FIREBASE_API_KEY}
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: ${NEXT_PUBLIC_FIREBASE_APP_ID}
+    availability:
+      - BUILD
+      - RUNTIME
