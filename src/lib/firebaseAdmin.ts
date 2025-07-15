@@ -1,4 +1,5 @@
 
+import 'server-only';
 import admin from 'firebase-admin';
 
 // Check if we're in a build environment on App Hosting.
