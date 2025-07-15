@@ -4,7 +4,7 @@
 import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { collection, query, where, getDocs, limit, orderBy, or, startAt, endAt, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useFirebaseServices } from '@/components/layout/FirebaseProvider';
 import type { UserProfile, Collection, Link as LinkType } from '@/types';
 import UserCard from '@/components/UserCard';
 import CollectionCard from '@/components/CollectionCard';
@@ -25,6 +25,7 @@ function SearchPageComponent() {
   const searchParams = useSearchParams();
   const q = searchParams.get('q');
 
+  const { db } = useFirebaseServices();
   const [results, setResults] = useState<SearchResults | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,7 +110,7 @@ function SearchPageComponent() {
     };
 
     performSearch();
-  }, [q]);
+  }, [q, db]);
 
   if (loading) {
     return <SearchLoading query={q || ""} />;
