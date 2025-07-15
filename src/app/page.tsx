@@ -22,6 +22,11 @@ export default function HomePage() {
   const [loadingCollections, setLoadingCollections] = useState(true);
 
   useEffect(() => {
+    // Only fetch collections once Firebase is initialized (signaled by authLoading being false).
+    if (authLoading) {
+      return;
+    }
+
     const getPublicCollections = async (): Promise<void> => {
       setLoadingCollections(true);
       try {
@@ -64,7 +69,7 @@ export default function HomePage() {
     };
 
     getPublicCollections();
-  }, []);
+  }, [authLoading]); // Re-run effect when auth loading state changes.
 
   return (
     <>
