@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
-import { db } from '@/lib/firebase'; // Use client-side db
+import { useFirebaseServices } from '@/components/layout/FirebaseProvider';
 import type { UserProfile as UserProfileType } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -17,6 +18,7 @@ export default function UserProfilePage() {
   const params = useParams();
   const username = params.username as string;
 
+  const { db } = useFirebaseServices();
   const { user: currentUser, loading: authLoading } = useAuthStatus();
   const [profileUser, setProfileUser] = useState<UserProfileType | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -60,7 +62,7 @@ export default function UserProfilePage() {
     };
 
     fetchProfileData();
-  }, [username]);
+  }, [username, db]);
 
   const handleProfilePictureUpdate = (newImageUrl: string) => {
     setProfileUser(prevProfile => {

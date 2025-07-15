@@ -22,7 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStatus } from '@/hooks/useAuthStatus';
-import { db } from '@/lib/firebase';
+import { useFirebaseServices } from '@/components/layout/FirebaseProvider';
 import { collection, query, where, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
 import type { Collection as CollectionType, UserProfile } from '@/types';
 import {
@@ -41,6 +41,7 @@ const READING_LIST_TITLE = "Reading List";
 export default function AppSidebar() {
   const pathname = usePathname();
   const { user, loading: authLoading } = useAuthStatus();
+  const { db } = useFirebaseServices();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [collections, setCollections] = useState<CollectionType[]>([]);
@@ -73,7 +74,7 @@ export default function AppSidebar() {
       setUserProfile(null);
       setProfileLoading(false);
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, db]);
 
   useEffect(() => {
     if (user && !authLoading) {
@@ -114,7 +115,7 @@ export default function AppSidebar() {
       setReadingListCollection(null);
       setCollectionsLoading(false);
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, db]);
 
   const isActive = (path: string) => pathname === path;
   const isCollectionsActive = () => pathname.startsWith('/collections/') || pathname === '/create-collection';
@@ -313,5 +314,3 @@ export default function AppSidebar() {
     </Sidebar>
   );
 }
-
-    

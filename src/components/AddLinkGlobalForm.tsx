@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { db } from '@/lib/firebase';
+import { useFirebaseServices } from '@/components/layout/FirebaseProvider';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
 import type { Collection } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -65,6 +65,7 @@ export default function AddLinkGlobalForm({ userId }: AddLinkGlobalFormProps) {
 
   const router = useRouter();
   const { toast } = useToast();
+  const { db } = useFirebaseServices();
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting }, control } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -95,7 +96,7 @@ export default function AddLinkGlobalForm({ userId }: AddLinkGlobalFormProps) {
       }
     };
     fetchCollections();
-  }, [userId, toast, setValue, collectionAction]);
+  }, [userId, toast, setValue, collectionAction, db]);
 
   useEffect(() => {
     setValue('existingCollectionIds', Array.from(selectedUiCollectionIds), { shouldValidate: true, shouldDirty: true });

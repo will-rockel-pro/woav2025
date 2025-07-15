@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { doc, getDoc, collection, query, where, orderBy, Timestamp, addDoc, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db, storage } from '@/lib/firebase';
+import { useFirebaseServices } from '@/components/layout/FirebaseProvider';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { Collection, Link as LinkType, UserProfile } from '@/types';
 import Image from 'next/image';
@@ -30,6 +30,7 @@ export default function CollectionPage() {
   const paramsHook = useParams();
   const collectionIdFromParams = paramsHook.id as string;
 
+  const { db, storage } = useFirebaseServices();
   const { user, loading: authLoading } = useAuthStatus();
   const [collectionData, setCollectionData] = useState<Collection | null>(null);
   const [links, setLinks] = useState<EnrichedLink[]>([]);
@@ -96,7 +97,7 @@ export default function CollectionPage() {
     } finally {
       setLoading(false);
     }
-  }, [collectionIdFromParams, user]);
+  }, [collectionIdFromParams, user, db]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -373,8 +374,3 @@ export default function CollectionPage() {
     </div>
   );
 }
-    
-
-    
-
-    

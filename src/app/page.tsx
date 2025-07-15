@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Bookmark, Search, Users, Library, Info } from 'lucide-react';
 import type { Collection as CollectionType, UserProfile } from '@/types';
 import { Timestamp, collection, query, where, getDocs, limit, orderBy, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase'; // Use client-side db
+import { useFirebaseServices } from '@/components/layout/FirebaseProvider';
 import CollectionCard from '@/components/CollectionCard';
 import { useAuthStatus } from '@/hooks/useAuthStatus';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,6 +20,7 @@ export default function HomePage() {
   const { user, loading: authLoading } = useAuthStatus();
   const [publicCollections, setPublicCollections] = useState<EnrichedCollection[]>([]);
   const [loadingCollections, setLoadingCollections] = useState(true);
+  const { db } = useFirebaseServices();
 
   useEffect(() => {
     // Only fetch collections once Firebase is initialized (signaled by authLoading being false).
@@ -69,7 +70,7 @@ export default function HomePage() {
     };
 
     getPublicCollections();
-  }, [authLoading]); // Re-run effect when auth loading state changes.
+  }, [authLoading, db]); // Re-run effect when auth loading state changes or db is available.
 
   return (
     <>

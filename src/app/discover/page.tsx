@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, doc, getDoc, limit, orderBy, Timestamp, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useFirebaseServices } from '@/components/layout/FirebaseProvider';
 import type { Collection, UserProfile } from '@/types';
 import CollectionCard from '@/components/CollectionCard';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,6 +21,7 @@ export default function DiscoverPage() {
   const [loading, setLoading] = useState(true); 
   const [error, setError] = useState<string | null>(null);
   const { user, loading: authLoading } = useAuthStatus();
+  const { db } = useFirebaseServices();
 
   useEffect(() => {
     const fetchCollectionsAndProfile = async () => {
@@ -101,7 +102,7 @@ export default function DiscoverPage() {
     };
 
     fetchCollectionsAndProfile();
-  }, [user, authLoading]); 
+  }, [user, authLoading, db]); 
 
   if (authLoading || loading) {
     return <DiscoverLoading />;

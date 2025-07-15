@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { collection, addDoc, serverTimestamp, Timestamp, query, where, getDocs, orderBy, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useFirebaseServices } from '@/components/layout/FirebaseProvider';
 import { useAuthStatus } from '@/hooks/useAuthStatus';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +38,7 @@ const AddLinkForm: React.FC<AddLinkFormProps> = ({ collectionId, collectionOwner
   const [selectedAdditionalCollectionIds, setSelectedAdditionalCollectionIds] = useState<Set<string>>(new Set());
   const [multiSelectOpen, setMultiSelectOpen] = useState(false);
 
+  const { db } = useFirebaseServices();
   const { user, loading: authLoading } = useAuthStatus();
   const { toast } = useToast();
 
@@ -63,7 +64,7 @@ const AddLinkForm: React.FC<AddLinkFormProps> = ({ collectionId, collectionOwner
     if (user) {
       fetchUserCollections();
     }
-  }, [user, collectionId, toast]);
+  }, [user, collectionId, toast, db]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

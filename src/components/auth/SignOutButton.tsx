@@ -4,13 +4,14 @@
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { auth } from '@/lib/firebase';
+import { useFirebaseServices } from '@/components/layout/FirebaseProvider';
 import { useToast } from '@/hooks/use-toast';
 import { LogOut } from 'lucide-react';
 
 export default function SignOutButton() {
   const router = useRouter();
   const { toast } = useToast();
+  const { auth } = useFirebaseServices();
 
   const handleSignOut = async () => {
     try {

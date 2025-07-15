@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useFirebaseServices } from '@/components/layout/FirebaseProvider';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -24,6 +24,7 @@ export default function ProfileBioEditor({ userId, currentBio }: ProfileBioEdito
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const { db } = useFirebaseServices();
 
   const remainingChars = MAX_BIO_LENGTH - bio.length;
 

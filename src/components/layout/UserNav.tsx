@@ -18,13 +18,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { UserCircle, LogIn, PlusCircle, User, Library, LogOut, Link as LinkIconLucide } from 'lucide-react'; // Renamed LinkIcon
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useFirebaseServices } from '@/components/layout/FirebaseProvider';
 import type { UserProfile } from '@/types';
 
 export default function UserNav() {
   const { user, loading: authLoading } = useAuthStatus();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const { db } = useFirebaseServices();
 
   useEffect(() => {
     if (user && !authLoading) {
@@ -50,7 +51,7 @@ export default function UserNav() {
     } else if (!user && !authLoading) {
       setUserProfile(null); 
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, db]);
 
   if (authLoading) {
     return <Skeleton className="h-10 w-10 rounded-full" />;

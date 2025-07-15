@@ -1,11 +1,11 @@
 
 'use client';
 
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { signInWithPopup } from 'firebase/auth';
 import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { auth, db, googleProvider } from '@/lib/firebase';
+import { useFirebaseServices } from '@/components/layout/FirebaseProvider';
 import type { UserProfile } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { LogIn } from 'lucide-react';
@@ -13,6 +13,7 @@ import { LogIn } from 'lucide-react';
 export default function SignInButton() {
   const router = useRouter();
   const { toast } = useToast();
+  const { auth, db, googleProvider } = useFirebaseServices();
 
   const handleSignIn = async () => {
     console.log('[SignInButton] Initiating Google Sign-In...');

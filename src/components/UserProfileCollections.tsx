@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, orderBy, Timestamp, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase'; // Using client-side db
+import { useFirebaseServices } from '@/components/layout/FirebaseProvider';
 import type { Collection as CollectionType, UserProfile } from '@/types';
 import CollectionCard from '@/components/CollectionCard';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -23,6 +23,7 @@ export default function UserProfileCollections({ userId, isOwnProfileView, profi
   const [collections, setCollections] = useState<EnrichedCollection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { db } = useFirebaseServices();
 
   useEffect(() => {
     const fetchCollections = async () => {
@@ -83,7 +84,7 @@ export default function UserProfileCollections({ userId, isOwnProfileView, profi
     };
 
     fetchCollections();
-  }, [userId, isOwnProfileView]);
+  }, [userId, isOwnProfileView, db]);
 
   if (loading) {
     return (
