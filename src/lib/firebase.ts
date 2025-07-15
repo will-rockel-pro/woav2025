@@ -12,7 +12,6 @@ export const getFirebaseApp = (config: FirebaseOptions): FirebaseApp => {
       !config.apiKey || config.apiKey.includes('YOUR_') ||
       !config.projectId || config.projectId.includes('YOUR_')
     ) {
-        // Return a dummy object or throw an error if config is invalid
         // This prevents crashes during server build when env vars might be missing
         console.warn("Firebase config is missing or invalid. Firebase will not be initialized on the client.");
     }
