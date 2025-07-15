@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
         pathname: '/s2/favicons/**',
       },
       {
-        protocol: 'https',
+        protocol: 'https' as const,
         hostname: 'firebasestorage.googleapis.com',
         port: '',
         pathname: '/**',
