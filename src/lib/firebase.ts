@@ -3,10 +3,11 @@ import { initializeApp, getApps, getApp, FirebaseOptions } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { firebaseConfig } from '@/config/firebase';
 
 let app = getApps().length > 0 ? getApp() : null;
 
-export function initializeAppIfNeeded(config: FirebaseOptions) {
+export function initializeAppIfNeeded(config: FirebaseOptions = firebaseConfig) {
   if (!app) {
     if (
       !config.apiKey || config.apiKey.includes('YOUR_') ||
@@ -14,7 +15,7 @@ export function initializeAppIfNeeded(config: FirebaseOptions) {
       !config.projectId || config.projectId.includes('YOUR_')
     ) {
       console.warn(
-        `WARNING: Firebase configuration might be missing or using placeholder values.`
+        `WARNING: Firebase configuration might be missing or using placeholder values. Please ensure .env.local is set up correctly.`
       );
       // We don't initialize if the config is clearly invalid.
       // This can happen during build if env vars are not set.
@@ -28,10 +29,8 @@ export function initializeAppIfNeeded(config: FirebaseOptions) {
 function getInitializedApp() {
   if (!app) {
     // This case might happen if a component tries to use firebase before the provider has initialized.
-    // Throwing an error makes it clear what the problem is.
-    throw new Error(
-      "Firebase has not been initialized. Make sure your app is wrapped in a FirebaseProvider."
-    );
+    // We initialize it here as a fallback, but the Provider pattern is preferred.
+    return initializeAppIfNeeded();
   }
   return app;
 }
