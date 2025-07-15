@@ -1,36 +1,42 @@
+import admin from 'firebase-admin';
 
-'use client';
+// Check if we're in a build environment on App Hosting.
+// process.env.K_REVISION is a variable set by Cloud Run, which App Hosting uses.
+const isBuildProcess = !!process.env.K_REVISION;
 
-import { createContext, useContext } from 'react';
-import type { FirebaseOptions } from 'firebase/app';
-import { initializeAppIfNeeded } from '@/lib/firebase';
+const serviceAccountKeyJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_JSON;
 
-// Create a context to hold the Firebase config
-const FirebaseContext = createContext<FirebaseOptions | null>(null);
+let adminApp: admin.app.App | undefined;
+let adminDb: admin.firestore.Firestore | undefined;
+let adminAuth: admin.auth.Auth | undefined;
+let adminStorage: admin.storage.Storage | undefined;
 
-// Custom hook to use the Firebase context
-export const useFirebase = () => {
-  const context = useContext(FirebaseContext);
-  if (!context) {
-    throw new Error('useFirebase must be used within a FirebaseProvider');
+if (!admin.apps.length) {
+  // Only attempt to initialize if not in a build process and the key exists.
+  if (!isBuildProcess && serviceAccountKeyJson && serviceAccountKeyJson.trim().startsWith('{')) {
+    try {
+      const serviceAccount = JSON.parse(serviceAccountKeyJson);
+      adminApp = admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+      console.log('[firebaseAdmin] Firebase Admin SDK initialized successfully.');
+    } catch (e: any) {
+      console.error('[firebaseAdmin] Firebase Admin SDK initialization error:', e.message);
+    }
+  } else if (isBuildProcess) {
+    console.warn('[firebaseAdmin] In build process, skipping Firebase Admin SDK initialization.');
+  } else {
+    console.warn('[firebaseAdmin] FIREBASE_SERVICE_ACCOUNT_KEY_JSON is not a valid JSON object or is not set. Skipping Admin SDK initialization.');
   }
-  return context;
-};
-
-// The provider component
-export default function FirebaseProvider({
-  config,
-  children,
-}: {
-  config: FirebaseOptions;
-  children: React.ReactNode;
-}) {
-  // Initialize Firebase on the client with the provided config
-  initializeAppIfNeeded(config);
-
-  return (
-    <FirebaseContext.Provider value={config}>
-      {children}
-    </FirebaseContext.Provider>
-  );
+} else {
+  adminApp = admin.app();
+  console.log('[firebaseAdmin] Reusing existing Firebase Admin SDK app instance.');
 }
+
+if (adminApp) {
+    adminDb = adminApp.firestore();
+    adminAuth = adminApp.auth();
+    adminStorage = adminApp.storage();
+}
+
+export { adminDb, adminAuth, adminStorage };
