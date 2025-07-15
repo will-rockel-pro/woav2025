@@ -1,42 +1,48 @@
-import admin from 'firebase-admin';
 
-// Check if we're in a build environment on App Hosting.
-// process.env.K_REVISION is a variable set by Cloud Run, which App Hosting uses.
-const isBuildProcess = !!process.env.K_REVISION;
+// src/config/firebase.ts
+import type { FirebaseOptions } from 'firebase/app';
 
-const serviceAccountKeyJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_JSON;
+// This object is now populated by the FirebaseProvider
+export const firebaseConfig: FirebaseOptions = {};
 
-let adminApp: admin.app.App | undefined;
-let adminDb: admin.firestore.Firestore | undefined;
-let adminAuth: admin.auth.Auth | undefined;
-let adminStorage: admin.storage.Storage | undefined;
+// Instructions have been moved to README or will be handled by the provider.
+// The .env.local file is still necessary for local development,
+// and the values are read by the build system for deployment.
 
-if (!admin.apps.length) {
-  // Only attempt to initialize if not in a build process and the key exists.
-  if (!isBuildProcess && serviceAccountKeyJson && serviceAccountKeyJson.trim().startsWith('{')) {
-    try {
-      const serviceAccount = JSON.parse(serviceAccountKeyJson);
-      adminApp = admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-      });
-      console.log('[firebaseAdmin] Firebase Admin SDK initialized successfully.');
-    } catch (e: any) {
-      console.error('[firebaseAdmin] Firebase Admin SDK initialization error:', e.message);
+// IMPORTANT: YOU MUST UPDATE YOUR FIRESTORE SECURITY RULES.
+// Go to Firebase Console -> Firestore Database -> Rules and replace with:
+/*
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /collections/{collectionId} {
+      // Allow public read if published is true
+      // Allow authenticated user to read their own collections (even if not published)
+      allow read: if resource.data.published == true ||
+                     (request.auth != null && resource.data.owner == request.auth.uid);
+
+      allow create: if request.auth != null && request.resource.data.owner == request.auth.uid;
+      allow update: if request.auth != null && resource.data.owner == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.owner == request.auth.uid;
     }
-  } else if (isBuildProcess) {
-    console.warn('[firebaseAdmin] In build process, skipping Firebase Admin SDK initialization.');
-  } else {
-    console.warn('[firebaseAdmin] FIREBASE_SERVICE_ACCOUNT_KEY_JSON is not a valid JSON object or is not set. Skipping Admin SDK initialization.');
+
+    match /users/{userId} {
+      // Allow anyone to read user profiles (needed for displaying owner info)
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /links/{linkId} {
+      // Allow read if the link's parent collection is published OR if the user is authenticated.
+      allow read: if get(/databases/$(database)/documents/collections/$(resource.data.collectionId)).data.published == true ||
+                     request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null &&
+                              (resource.data.addedBy == request.auth.uid ||
+                               get(/databases/$(database)/documents/collections/$(resource.data.collectionId)).data.owner == request.auth.uid);
+    }
   }
-} else {
-  adminApp = admin.app();
-  console.log('[firebaseAdmin] Reusing existing Firebase Admin SDK app instance.');
 }
-
-if (adminApp) {
-    adminDb = adminApp.firestore();
-    adminAuth = adminApp.auth();
-    adminStorage = adminApp.storage();
-}
-
-export { adminDb, adminAuth, adminStorage };
+*/
