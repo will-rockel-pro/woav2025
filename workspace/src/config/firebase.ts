@@ -1,13 +1,24 @@
 
 // src/config/firebase.ts
-import type { FirebaseOptions } from 'firebase/app';
+export const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
 
-// This object is now populated by the FirebaseProvider
-export const firebaseConfig: FirebaseOptions = {};
-
-// Instructions have been moved to README or will be handled by the provider.
-// The .env.local file is still necessary for local development,
-// and the values are read by the build system for deployment.
+// Instructions for the user:
+// Create a .env.local file in the root of your project and add your Firebase config:
+/*
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+*/
 
 // IMPORTANT: YOU MUST UPDATE YOUR FIRESTORE SECURITY RULES.
 // Go to Firebase Console -> Firestore Database -> Rules and replace with:
@@ -35,9 +46,7 @@ service cloud.firestore {
     }
 
     match /links/{linkId} {
-      // Allow read if the link's parent collection is published OR if the user is authenticated.
-      allow read: if get(/databases/$(database)/documents/collections/$(resource.data.collectionId)).data.published == true ||
-                     request.auth != null;
+      allow read: if request.auth != null; // Or more specific if links can be public
       allow create: if request.auth != null;
       allow update, delete: if request.auth != null &&
                               (resource.data.addedBy == request.auth.uid ||

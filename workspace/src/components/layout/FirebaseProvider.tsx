@@ -10,15 +10,6 @@ import type { FirebaseStorage } from 'firebase/storage';
 import type { GoogleAuthProvider } from 'firebase/auth';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const firebaseConfig: FirebaseOptions = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
-
 interface FirebaseContextValue {
   app: FirebaseApp;
   auth: Auth;
@@ -39,28 +30,27 @@ export const useFirebaseServices = () => {
 
 export default function FirebaseProvider({
   children,
+  config,
 }: {
   children: React.ReactNode;
+  config: FirebaseOptions;
 }) {
   const [services, setServices] = useState<FirebaseContextValue | null>(null);
 
   useEffect(() => {
-    if (
-      !firebaseConfig.apiKey || firebaseConfig.apiKey.includes('YOUR_') ||
-      !firebaseConfig.projectId || firebaseConfig.projectId.includes('YOUR_')
-    ) {
-      console.warn("Firebase config is missing or invalid. Firebase will not be initialized.");
-      return;
+    if (!config?.apiKey || config.apiKey.includes('YOUR_')) {
+        console.error("Firebase config is missing or invalid in FirebaseProvider.");
+        return;
     }
-    
-    const app = getFirebaseApp(firebaseConfig);
+
+    const app = getFirebaseApp(config);
     const auth = getFirebaseAuth(app);
     const db = getFirebaseDb(app);
     const storage = getFirebaseStorage(app);
     const googleProvider = getGoogleAuthProvider();
 
     setServices({ app, auth, db, storage, googleProvider });
-  }, []);
+  }, [config]);
 
   if (!services) {
     return (
