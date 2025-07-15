@@ -1,9 +1,10 @@
 
 'use client';
 
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import type { FirebaseOptions } from 'firebase/app';
 import { initializeAppIfNeeded } from '@/lib/firebase';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -32,8 +33,30 @@ export default function FirebaseProvider({
 }: {
   children: React.ReactNode;
 }) {
-  // Initialize Firebase on the client with the provided config
-  initializeAppIfNeeded(firebaseConfig);
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    try {
+      // Initialize Firebase on the client with the provided config
+      initializeAppIfNeeded(firebaseConfig);
+      setInitialized(true);
+    } catch (error) {
+      console.error("Firebase initialization failed:", error);
+    }
+  }, []);
+
+  if (!initialized) {
+    // You can return a loading spinner or a skeleton UI here
+    return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <div className="space-y-4">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <Skeleton className="h-4 w-[250px]" />
+                <Skeleton className="h-4 w-[200px]" />
+            </div>
+        </div>
+    );
+  }
 
   return (
     <FirebaseContext.Provider value={firebaseConfig}>
